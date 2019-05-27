@@ -108,7 +108,7 @@ async function shuffle_music(){
 	console.log(shuffled_names); 
 	let src_start = await get_direct_links(shuffled_links[0]);
 	final.push(src_start);
-	audiopl.src=proxyurl+src_start;
+	audiopl.src=src_start;
 	toggle_music();
 	document.getElementById('ol').style.display="none";
 	document.getElementById('load_spinner').style.display="none";
