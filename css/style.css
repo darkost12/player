@@ -1,0 +1,81 @@
+header{
+	padding-top: 20px;
+}
+.buttons{
+	width: 40px;
+	height:40px;
+}
+#submit_link{
+	border-radius:10%;
+}
+input[type=submit]{
+	font-size:20px;
+	font-family: Georgia;
+}
+body{
+	padding:0px;
+	margin:0px;
+	height:100%;
+	background-image:linear-gradient(90deg, #c471ed, #f64f59);
+}
+#next_button{
+	margin-left: 4px;
+}
+#previous_button{
+	transform: rotate(180deg);
+	margin-right: 4px;
+}
+.button_round{
+	width:60px;
+	height:60px;
+	border-radius:100%;
+	margin: 0 auto;
+	vertical-align: middle;
+	align-content: center;
+}
+#youtube_playlist_link{
+	width: 75%;
+	height:30px;
+}
+#submit_link{
+	height: 30px;
+}
+#music_player{
+	display:none;
+}
+#control_panel{
+	text-align: center;
+}
+.content{
+	min-height: calc(100vh - 80px);
+}
+form{
+	text-align: center;
+}
+nav{
+	display: block;
+}
+.overlay{
+	height:100%;
+	width:100%;
+	top:0px;
+	display: none;
+	position: fixed;
+	padding-top: 40vh;
+	background-image:linear-gradient(90deg, #2a0845, #6441a5);
+	opacity: 0.9;
+}
+#load_spinner{
+	height:50px;
+	margin:0 auto;
+	display:none;
+	-webkit-animation: rotation 2s infinite linear;
+}
+@-webkit-keyframes rotation {
+		from {
+				-webkit-transform: rotate(0deg);
+		}
+		to {
+				-webkit-transform: rotate(359deg);
+		}
+}

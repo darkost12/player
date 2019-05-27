@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title> My player </title>
+	<link rel="icon" type="image/png" href="res/favicon.ico"/>
+	<link rel="stylesheet" href="css/style.css"/>
+	<script src="js/index.js"></script>
+	<script type="text/javascript" src="js/jquery.js"></script>
+</head>
+<body>
+	<div class="content">
+	<header>
+		<form>
+			<input type="text" id="youtube_playlist_link" placeholder="Enter you YouTube playlist link here!" spellcheck="false" autocomplete="off">
+			<input type="submit" id="submit_link" value="SUBMIT" onclick="apiCall(event)" style="height:35px"/>
+		</form>
+	</header>
+	<div id="ol" class="overlay">
+		<img id="load_spinner" src="res/loading.png"/>
+	</div>
+	<section id="equalizer">
+		<div>
+			<audio id="music_player"/>
+		</div>
+	</section>
+	<section id=song_credentials>
+	</section>
+	</div>
+	<footer>
+		<nav>
+			<div class="slider">
+			</div>
+			<div id="control_panel">
+			<button type="button" class="button_round" id="previous"><img src="res/next.png" id="previous_button" class="buttons" onclick="previous_music()"/></button>
+			<button type="button" class="button_round" id="toggle"><img src="res/play.png" id="toggle_button" class="buttons" onclick="toggle_music()"/></button>
+			<button type="button" class="button_round" id="shuffle"><img src="res/shuffle.png" id="shuffle_button" class="buttons" onclick="shuffle_music()"/></button>
+			<button type="button" class="button_round" id="next"><img src="res/next.png" id="next_button" class="buttons" onclick="next_music()"/></button>
+			</div>
+		</nav>
+	</footer>
+</body>
+
