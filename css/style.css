@@ -66,10 +66,9 @@ nav{
 	opacity: 0.9;
 }
 #load_spinner{
-	height:50px;
 	margin:0 auto;
 	display:none;
-	-webkit-animation: rotation 2s infinite linear;
+	-webkit-animation: rotation 1s infinite linear;
 }
 @-webkit-keyframes rotation {
 		from {
@@ -78,4 +77,29 @@ nav{
 		to {
 				-webkit-transform: rotate(359deg);
 		}
+}
+#song_name{
+	text-align: center;
+	padding-top:78vh;
+	display:none;
+	font-family: 'venus';
+	margin: 0 auto;
+}
+@font-face{
+	font-family: "venus";
+	src: url("../res/venus.ttf");
+}
+#name_holder{
+	align-items: center;
+	display:flex;
+	justify-content: center;
+}
+#bars{
+	position: fixed;
+	bottom:25vh;
+	left:10vw;
+	right:10vw;
+}
+#bars div{
+	display:inline-block;
 }
