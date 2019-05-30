@@ -41,13 +41,16 @@ body{
 	height: 30px;
 }
 #music_player{
-	display:none;
+
 }
 #control_panel{
+	padding-top:50px;
 	text-align: center;
+	position: flex;
+
 }
 .content{
-	min-height: calc(100vh - 80px);
+	min-height: calc(100vh - 120px);
 }
 form{
 	text-align: center;
@@ -103,3 +106,53 @@ nav{
 #bars div{
 	display:inline-block;
 }
+.slider_container{
+	position: fixed;
+	width:80%;
+	display: block;
+	text-align: center;
+	padding-left: 10vw;
+}
+.slider {
+  -webkit-appearance: none;
+  display: inline-block;
+  width: 85%;
+  height: 10px;
+  border-radius: 5px;   
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.3;
+  margin: 0 auto;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+  margin:0 auto;
+}
+.slider:hover {
+  opacity: 0.5;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%; 
+  background: #000000;
+  cursor: pointer;
+}
+#current{
+	display: inline-block;
+	text-align: left;
+	width:50px;
+	font-family: "venus";
+	src: url("../res/venus.ttf");
+	font-size:15px;
+	margin-left:-15px;
+}
+/*#song_duration{
+	display: inline-block;
+	text-align: right;
+	width:50px;
+	font-family: "venus";
+	src: url("../res/venus.ttf");
+	font-size:15px;
+}*/

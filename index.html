@@ -24,23 +24,24 @@
 	<div id="name_holder">
 		<p id="song_name">Name of song</p>
 	</div>
+	<section id=song_credentials>
+	</section>
 	<section id="equalizer">
 		<div>
-			<audio id="music_player"/>
+			<audio id="music_player" preload="metadata" />
 			<audio id="fake_player"/>
 		</div>
 	</section>
-	<section id=song_credentials>
-	</section>
 	</div>
+		<div class="slider_container">
+				<div id="current"> --:-- </div>
+					<input type="range" min="1" max="100" value="1" class="slider" id="currentPosition">
+		</div>
 	<footer>
 		<nav>
-			<div class="slider">
-			</div>
 			<div id="control_panel">
 			<button type="button" class="button_round" id="previous"><img src="res/next.png" id="previous_button" class="buttons" onclick="previous_music()"/></button>
 			<button type="button" class="button_round" id="toggle"><img src="res/play.png" id="toggle_button" class="buttons" onclick="toggle_music()"/></button>
-			<button type="button" class="button_round" id="shuffle"><img src="res/shuffle.png" id="shuffle_button" class="buttons" onclick="shuffle_music()"/></button>
 			<button type="button" class="button_round" id="next"><img src="res/next.png" id="next_button" class="buttons" onclick="next_music()"/></button>
 			</div>
 		</nav>

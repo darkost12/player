@@ -122,6 +122,7 @@ async function get_direct_links(link){
 
 function next_music(){
 	let audiopl = document.getElementById('music_player');
+	document.getElementById('currentPosition').value=1;
 	audiopl.pause();
 	audiopl.currentTime = 0;
 	currentSong+=1;
@@ -130,12 +131,15 @@ function next_music(){
 	}
 	audiopl.src = checked_links[currentSong];
 	audiopl.play();
+	/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
 	document.getElementById('song_name').innerHTML=checked_names[currentSong];
 	document.getElementById('song_name').style.display='inline-block';
+
 }
 
 function previous_music(){
 	let audiopl = document.getElementById('music_player');
+	document.getElementById('currentPosition').value=1;
 	audiopl.pause();
 	audiopl.currentTime = 0;
 	currentSong-=1;
@@ -147,6 +151,8 @@ function previous_music(){
 	audiopl.play();
 	document.getElementById('song_name').innerHTML=checked_names[currentSong];
 	document.getElementById('song_name').style.display='inline-block';
+	/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
+
 }
 
 function parseContent(content){
@@ -196,9 +202,11 @@ function play_music(){
 		if (audiopl.paused && audiopl.src==''){
 			audiopl.src=checked_links[0];
 			audiopl.play();
+			//console.log(document.getElementById('music_player').duration);
 			button.src="res/pause.png";
 			document.getElementById('song_name').innerHTML=checked_names[currentSong];
 			document.getElementById('song_name').style.display='inline-block';
+			/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
 		}
 		if (!audiopl.paused){
 
@@ -211,9 +219,31 @@ window.onload=function(){
 			if (currentSong>(checked_links.length-1)){
 				currentSong=0;
 			}
+		document.getElementById('song_name').innerHTML=checked_names[currentSong];
 		document.getElementById('music_player').src=checked_links[currentSong];
 		document.getElementById('music_player').play();
 		document.getElementById('toggle_button').src="res/pause.png";
+		/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
+	}
+	document.getElementById('currentPosition').addEventListener('input', change_time);
+	function change_time(){
+		document.getElementById('music_player').currentTime=document.getElementById('music_player').duration/100*document.getElementById('currentPosition').value;
+		if (Math.floor(document.getElementById('music_player').currentTime%60)<10){
+			document.getElementById('current').innerHTML=Math.floor(document.getElementById('music_player').currentTime/60)+':0'+Math.floor(document.getElementById('music_player').currentTime%60);
+		} else {
+			document.getElementById('current').innerHTML=Math.floor(document.getElementById('music_player').currentTime/60)+':'+Math.floor(document.getElementById('music_player').currentTime%60);
+		}
+		document.getElementById('music_player').play();
+	};
+	document.getElementById('music_player').addEventListener("timeupdate", move_slider); 
+	function move_slider(){
+
+		document.getElementById('currentPosition').value=Math.floor(document.getElementById('music_player').currentTime*100/document.getElementById('music_player').duration);
+		if (Math.floor(document.getElementById('music_player').currentTime%60)<10){
+			document.getElementById('current').innerHTML=Math.floor(document.getElementById('music_player').currentTime/60)+':0'+Math.floor(document.getElementById('music_player').currentTime%60);
+		} else {
+			document.getElementById('current').innerHTML=Math.floor(document.getElementById('music_player').currentTime/60)+':'+Math.floor(document.getElementById('music_player').currentTime%60);
+		}
 	}
 	//document.getElementById('music_player').addEventListener("play", !!!!!!!!!!!!!хрень сюда!!!!!!!!);
 //!!!!!!!!!!!!хрень сюда!!!!!! 
