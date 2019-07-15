@@ -38,6 +38,9 @@ body{
 	vertical-align: middle;
 	align-content: center;
 }
+.button_round:focus{
+	outline:none;
+}
 #youtube_playlist_link{
 	width: 75%;
 	height:30px;
