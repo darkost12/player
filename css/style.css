@@ -21,6 +21,7 @@ body{
 	right:0;
 	bottom: 0;
 	left: 0;
+	height:calc(100vh-80px);
 	background-image:linear-gradient(90deg, #c471ed, #f64f59);
 }
 #next_button{
@@ -58,7 +59,7 @@ body{
 
 }
 .content{
-	min-height: calc(85vh);
+	min-height: calc(65vh);
 }
 form{
 	text-align: center;
