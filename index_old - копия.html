@@ -11,12 +11,10 @@
 <body>
 	<div class="content">
 	<header>
-		<!--
 		<form>
 			<input type="text" id="youtube_playlist_link" placeholder="Enter you YouTube playlist link here!" spellcheck="false" autocomplete="off">
-			<input type="submit" id="submit_link" value="SUBMIT" style="height:36px"/>
+			<input type="submit" id="submit_link" value="SUBMIT" onclick="apiCall(event)" style="height:36px"/>
 		</form>
-	-->
 	</header>
 	<div id="ol" class="overlay">
 		<img id="load_spinner" src="res/loading.png"/>
@@ -35,12 +33,13 @@
 	</section>
 	</div>
 		<div class="slider_container">
+				
 					<input type="range" min="1" max="100" value="1" class="slider" id="currentPosition">
 					<div id="current"> --:-- </div>
 		</div>
 		<div id="volume_settings">
-			<img src="res/volume.png" id="volume_button"/>
 			<input type="range" min="0" max="1" value="0.5" step="0.01" class="slider2" id="volume_regulator">
+			<img src="res/volume.png" id="volume_button"/>
 		</div>
 	<footer>
 		<nav>

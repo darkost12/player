@@ -6,23 +6,27 @@ header{
 	height:40px;
 }
 #submit_link{
-	border-radius:10%;
+	font-family: "venus";
+	opacity: 0.8;
 }
 input[type=submit]{
 	font-size:20px;
 	font-family: Georgia;
+	vertical-align:top;
 }
 body{
 	padding:0px;
 	margin:0px;
-	height:100%;
+	top: 0;
+	right:0;
+	bottom: 0;
+	left: 0;
 	background-image:linear-gradient(90deg, #c471ed, #f64f59);
 }
 #next_button{
 	margin-left: 4px;
 }
 #previous_button{
-	transform: rotate(180deg);
 	margin-right: 4px;
 }
 .button_round{
@@ -36,6 +40,9 @@ body{
 #youtube_playlist_link{
 	width: 75%;
 	height:30px;
+	position: flex;
+	vertical-align:top;
+	opacity: 0.75;
 }
 #submit_link{
 	height: 30px;
@@ -47,17 +54,21 @@ body{
 	padding-top:50px;
 	text-align: center;
 	position: flex;
+	height:5vh;
 
 }
 .content{
-	min-height: calc(100vh - 120px);
+	min-height: calc(85vh);
 }
 form{
 	text-align: center;
+	vertical-align: bottom;
+	position:flex;
 }
 nav{
 	display: block;
 }
+
 .overlay{
 	height:100%;
 	width:100%;
@@ -83,10 +94,9 @@ nav{
 }
 #song_name{
 	text-align: center;
-	padding-top:78vh;
 	display:none;
 	font-family: 'venus';
-	margin: 0 auto;
+	/*margin: 0 auto;*/
 }
 @font-face{
 	font-family: "venus";
@@ -96,22 +106,29 @@ nav{
 	align-items: center;
 	display:flex;
 	justify-content: center;
+	height:30px;
+	padding-top: 73vh;
+
 }
-#bars{
+#chart{
 	position: fixed;
-	bottom:25vh;
-	left:10vw;
-	right:10vw;
+	margin: 0 auto;
+
+	bottom:35vh;
+	top:15vh;
+	left:5vw;
+	right:5vw;
+	min-height: 60vh;
+	width: 90vw;
 }
-#bars div{
-	display:inline-block;
-}
+
+
 .slider_container{
-	position: fixed;
+	position: absolute;
 	width:80%;
 	display: block;
 	text-align: center;
-	padding-left: 10vw;
+	padding-left: 13vw;
 }
 .slider {
   -webkit-appearance: none;
@@ -125,7 +142,6 @@ nav{
   margin: 0 auto;
   -webkit-transition: .2s;
   transition: opacity .2s;
-  margin:0 auto;
 }
 .slider:hover {
   opacity: 0.5;
@@ -141,18 +157,59 @@ nav{
 }
 #current{
 	display: inline-block;
-	text-align: left;
-	width:50px;
-	font-family: "venus";
-	src: url("../res/venus.ttf");
-	font-size:15px;
-	margin-left:-15px;
-}
-/*#song_duration{
-	display: inline-block;
 	text-align: right;
 	width:50px;
 	font-family: "venus";
 	src: url("../res/venus.ttf");
 	font-size:15px;
-}*/
+	margin-left:5px;
+}
+#volume_button{
+	width:15px;
+	position: absolute;
+	vertical-align: middle;
+	display:inline-block;
+}
+#volume_regulator{
+	 opacity: 0;
+}
+#volume_settings:hover #volume_regulator{
+	opacity: 0.3;
+	/*display:block;*/
+}
+#volume_settings:mouseout #volume_regulator{
+	opacity: 0;
+	transition: opacity 0.5s ease-out 2s;
+}
+.slider2 {
+  -webkit-appearance: none;
+  visibility: visible;
+  position: absolute;
+  transform: rotate(270deg);
+  width: 15vh;
+  height: 10px;
+  border-radius: 5px;   
+  background: #d3d3d3;
+  outline: none;
+  /*opacity: 0.3;*/
+  margin-left: 5px;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider2:hover {
+  opacity: 0.5;
+}
+.slider2::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%; 
+  background: #000000;
+  cursor: pointer;
+}
+#volume_settings{
+	position:absolute;
+	padding-left:3vw;
+}
