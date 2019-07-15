@@ -45,6 +45,7 @@ async function shuffle_music(){
 
 
 function next_music(){
+	document.getElementById('toggle_button').src="res/pause.png";
 	document.getElementById('currentPosition').value=1;
 	let audiopl = document.getElementById('music_player');
 	audiopl.pause();
@@ -65,6 +66,7 @@ function next_music(){
 }
 
 function previous_music(){
+	document.getElementById('toggle_button').src="res/pause.png";
 	document.getElementById('currentPosition').value=1;
 	let audiopl = document.getElementById('music_player');
 	audiopl.pause();
