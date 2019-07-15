@@ -45,8 +45,8 @@ async function shuffle_music(){
 
 
 function next_music(){
-	let audiopl = document.getElementById('music_player');
 	document.getElementById('currentPosition').value=1;
+	let audiopl = document.getElementById('music_player');
 	audiopl.pause();
 	play_flag=false;
 	audiopl.currentTime = 0;
@@ -55,6 +55,7 @@ function next_music(){
 		currentSong=0;
 	}
 	audiopl.src = shuffled_links[currentSong];
+	
 	audiopl.play();
 	play_flag=true;
 	/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
@@ -64,8 +65,8 @@ function next_music(){
 }
 
 function previous_music(){
-	let audiopl = document.getElementById('music_player');
 	document.getElementById('currentPosition').value=1;
+	let audiopl = document.getElementById('music_player');
 	audiopl.pause();
 	play_flag=false;
 	audiopl.currentTime = 0;
@@ -110,6 +111,7 @@ function toggle_music(){
 
 
 function play_music(){
+		document.getElementById('currentPosition').value=1;
 		let audiopl = document.getElementById('music_player');
 		let button = document.getElementById('toggle_button');
 		if (audiopl.paused && audiopl.src==''){
@@ -120,6 +122,7 @@ function play_music(){
 			document.getElementById('song_name').style.display='inline-block';
 			document.getElementById('ol').style.display="none";
 			document.getElementById('load_spinner').style.display="none";
+			document.getElementById('currentPosition').value=1;
 			/*document.getElementById('song_duration').innerHTML=document.getElementById('music_player').duration;*/
 		}
 		if (!audiopl.paused){
@@ -180,8 +183,11 @@ window.onload=function(){
 	};
 	document.getElementById('music_player').addEventListener("timeupdate", move_slider); 
 	function move_slider(){
-
+		if (document.getElementById('music_player').currentTime==0){
+			document.getElementById('currentPosition').value=1;
+		}else{
 		document.getElementById('currentPosition').value=(document.getElementById('music_player').currentTime*100/document.getElementById('music_player').duration);
+		}
 		if (Math.floor(document.getElementById('music_player').currentTime%60)<10){
 			document.getElementById('current').innerHTML=Math.floor(document.getElementById('music_player').currentTime/60)+':0'+Math.floor(document.getElementById('music_player').currentTime%60);
 		} else {

@@ -173,6 +173,7 @@ nav{
 }
 #volume_regulator{
 	 opacity: 0;
+	 margin-left:-20px;
 }
 #volume_settings:hover #volume_regulator{
 	opacity: 0.3;
