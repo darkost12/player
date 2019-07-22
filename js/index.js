@@ -10,7 +10,7 @@ var backup_names=[];
 var final=[];
 var currentSong;
 var play_flag;
-const token = "AgAAAAA0yS9YAAW1uML98-JI608zsYV3Yd2OP-w";
+const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
 const proxyurl = "https://cors-anywhere.herokuapp.com/";
 const proxyurl2 = "https://googleweblight.com/?lite_url=";
 const yadi = "https://cloud-api.yandex.net/v1/disk/resources/files";
@@ -140,7 +140,7 @@ window.onload=function(){
             dataType: 'json',
             contentType: "application/json",
             beforeSend: function(xhr) {
-                 xhr.setRequestHeader("Authorization", "AgAAAAA0yS9YAAW1uHIj5r6N_k25tC-XRpn1lQY")
+                 xhr.setRequestHeader("Authorization", "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo")
             },
             success: function(data){
             	for (let i=0; i<(data.items).length;i++){
