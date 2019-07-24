@@ -5,7 +5,7 @@ header{
 	width: 40px;
 	height:40px;
 }
-#submit_link{
+/*#submit_link{
 	font-family: "venus";
 	opacity: 0.8;
 }
@@ -13,7 +13,7 @@ input[type=submit]{
 	font-size:20px;
 	font-family: Georgia;
 	vertical-align:top;
-}
+}*/
 body{
 	padding:0px;
 	margin:0px;
@@ -41,7 +41,7 @@ body{
 .button_round:focus{
 	outline:none;
 }
-#youtube_playlist_link{
+/*#youtube_playlist_link{
 	width: 75%;
 	height:30px;
 	position: flex;
@@ -50,7 +50,7 @@ body{
 }
 #submit_link{
 	height: 30px;
-}
+}*/
 #music_player{
 
 }
@@ -120,10 +120,10 @@ nav{
 
 	bottom:35vh;
 	top:15vh;
-	left:5vw;
-	right:5vw;
+	/*left:5vw;
+	right:5vw;*/
 	min-height: 60vh;
-	width: 90vw;
+	width: 100vw;
 }
 
 
@@ -159,7 +159,7 @@ nav{
   background: #000000;
   cursor: pointer;
 }
-#current{
+#current_time{
 	display: inline-block;
 	text-align: right;
 	width:50px;
@@ -217,4 +217,10 @@ nav{
 #volume_settings{
 	position:absolute;
 	padding-left:3vw;
+}
+#canvas{
+	width:100%;
+	height:100%;
+	align-content: center;
+	margin: 0 auto;
 }

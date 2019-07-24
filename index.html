@@ -5,38 +5,36 @@
 	<title> My player </title>
 	<link rel="icon" type="image/png" href="res/favicon.ico"/>
 	<link rel="stylesheet" href="css/style.css"/>
-	<script src="js/index.js"></script>
+	
+	
+
+	<script defer language="javascript" type="text/javascript" src="js/index.js"></script>
+
 	<script type="text/javascript" src="js/jquery.js"></script>
+
 </head>
 <body>
 	<div class="content">
 	<header>
-		<!--
-		<form>
-			<input type="text" id="youtube_playlist_link" placeholder="Enter you YouTube playlist link here!" spellcheck="false" autocomplete="off">
-			<input type="submit" id="submit_link" value="SUBMIT" style="height:36px"/>
-		</form>
-	-->
 	</header>
-	<div id="ol" class="overlay">
+	<div id="overlay" class="overlay">
 		<img id="load_spinner" src="res/loading.png"/>
 	</div>
 	<div id="chart">
-
+		<canvas id="canvas"> </canvas>
 	</div>
 	<div id="name_holder">
 		<p id="song_name">Name of song</p>
 	</div>
 	<section id="equalizer">
 		<div>
-			<audio id="music_player" preload="metadata" />
-			<audio id="fake_player"/>
+			<audio id="music_player" preload="metadata" crossorigin="anonymous"/>
 		</div>
 	</section>
 	</div>
 		<div class="slider_container">
-					<input type="range" min="1" max="100" value="1" class="slider" id="currentPosition">
-					<div id="current"> --:-- </div>
+					<input type="range" min="1" max="100" value="1" class="slider" id="current_position">
+					<div id="current_time"> --:-- </div>
 		</div>
 		<div id="volume_settings">
 			<img src="res/volume.png" id="volume_button"/>
