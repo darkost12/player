@@ -171,7 +171,6 @@ window.onload=function(){
 		song_name.innerHTML=shuffled_names[current_song];
 		audiopl.src=shuffled_links[current_song];
 		audiopl.play();
-		renderFrame();
 		tog_but.src="res/pause.png";
 	}
 
