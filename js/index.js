@@ -1,5 +1,4 @@
 const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
-
 /**
  *Gets songs from yadi through REST API and puts in the custom WEB-player. 
  */
@@ -17,6 +16,20 @@ const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
 	var vol_but = document.getElementById('volume_button');		//The link to the <img> element.
 	var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
 	var timing = document.getElementById('current_time');		//The link to the <div> element.
+	var audioContext;
+	var visualctx;
+	var audioSrc;
+	var analyser;
+	var canvas,
+        cwidth,
+        cheight,
+        meterWidth, //width of the meters in the spectrum
+        gap, //gap between meters
+        capHeight,
+        capStyle,
+        meterNum, //count of the meters
+        capYPositionArray;
+	window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
 
 /**
  *Shuffles music after getting through API call.
@@ -71,13 +84,14 @@ function show(){
 function toggle_music(){
 	let button = tog_but;
 	if (audiopl.src!='' && audiopl.paused){
-		(audiopl.src).crossOrigin="anonymous";
+		open_context();
 		audiopl.play();
 		play_flag=true;
 		button.src="res/pause.png";
 		song_name.innerHTML=shuffled_names[current_song];
 		song_name.style.display='inline-block';
 	} else if (audiopl.src!='' && !audiopl.paused){
+		close_context();
 		audiopl.pause();
 		play_flag=false;
 		button.src="res/play.png"
@@ -90,6 +104,7 @@ function toggle_music(){
  *Sets the logic of next song button.
  */
 function next_music(){
+	close_context();
 	tog_but.src="res/pause.png";
 	position.value=1;
 	audiopl.pause();
@@ -100,6 +115,7 @@ function next_music(){
 		current_song=0;
 	}
 	audiopl.src = shuffled_links[current_song];
+	open_context();
 	audiopl.play();
 	play_flag=true;
 	song_name.innerHTML=shuffled_names[current_song];
@@ -113,6 +129,7 @@ function next_music(){
 function previous_music(){
 	tog_but.src="res/pause.png";
 	position.value=1;
+	close_context();
 	audiopl.pause();
 	play_flag=false;
 	audiopl.currentTime = 0;
@@ -122,10 +139,106 @@ function previous_music(){
 		current_song=shuffled_links.length-1;
 	}
 	audiopl.src = shuffled_links[current_song];
+	open_context();
 	audiopl.play();
 	play_flag=true;
 	song_name.innerHTML=shuffled_names[current_song];
 	song_name.style.display='inline-block';
+}
+function open_context(){
+	if(audioContext === undefined) {
+		audioContext = new AudioContext();
+		if (audioSrc === undefined){
+			audioSrc = audioContext.createMediaElementSource(audiopl);
+		}
+		
+		console.log("Created AudioContext");
+		console.log("Sample rate: " + audioContext.sampleRate);
+	}
+	analyser = audioContext.createAnalyser();
+	audioSrc.connect(analyser);
+	analyser.connect(audioContext.destination);
+	analyser.smoothingTimeConstant = 0.7;
+//	analyser.fftSize = 512;
+	
+	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
+	
+	canvas = document.getElementById('canvas');
+	visualctx = canvas.getContext('2d');
+	
+    renderFrame();
+}
+
+async function close_context(){
+	audioSrc.disconnect();
+	analyser.disconnect();
+	console.log('AudioContext has been closed');
+}
+
+function renderFrame() {
+    const ctx = visualctx;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const capHeight = 2;
+    
+    const barSpacing = 7;
+    const barWidth = 3;
+    const barHeight = canvas.height - capHeight;
+    
+    const nOfBars = Math.round(canvas.width/barSpacing);
+    
+    const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(frequencyData);
+    // analyser.getByteTimeDomainData(frequencyData);
+    
+    const styles = {
+    	cap_style: '#fff',
+    	gradient: (() => {
+    		const g = ctx.createLinearGradient(0, barHeight, 0, 0);
+		    g.addColorStop(1, '#0f0');
+		    g.addColorStop(0.5, '#ff0');
+		    g.addColorStop(0, '#f00');
+		    return g;
+    	})()
+    };
+    
+    const frequencyUpper = audioContext.sampleRate / 2;
+    const frequencyLimit = Math.min(16e3, frequencyUpper);
+    
+    const step = 
+    	(frequencyData.length * (frequencyLimit / frequencyUpper) - 1) 
+		/ (nOfBars - 1);
+    
+    for(let i = 0; i < nOfBars; i++) {
+    	// Normalized value (0..1)
+    	const value = frequencyData[Math.floor(i * step)] / 255;
+    	
+    	// |------- y = 0
+    	// |---||-- y = capHeight
+    	// |---||--
+    	// |---||--
+    	// |---||-- y = barHeight + capHeight
+    	
+    	// Bar
+    	ctx.fillStyle = styles.gradient;
+    	ctx.fillRect(
+    		i * barSpacing,
+    		barHeight - barHeight * value + capHeight,
+    		barWidth,
+    		barHeight - barHeight * (1 - value)
+    	);
+    	
+     	// Top of the bar (cap)
+    	ctx.fillStyle = styles.cap_style;
+    	ctx.fillRect(
+    		i * barSpacing,
+    		barHeight - barHeight * value,
+    		barWidth,
+    		capHeight
+    	);
+    }
+   
+    requestAnimationFrame(renderFrame);
 }
 
 /**
@@ -133,12 +246,12 @@ function previous_music(){
  */
 window.onload=function(){
 	/**
-		 *Loads the overlay at the very beginning.
-		 */
+	 *Loads the overlay at the very beginning.
+	 */
 	document.getElementById('overlay').style.display="block";
 	document.getElementById('load_spinner').style.display="block";
 
-	/**
+		/**
 		 *REST API call. Returns direct links to songs and their names.
 		 */
 	$.ajax({
@@ -159,7 +272,7 @@ window.onload=function(){
             }
         });
 	
-	/**
+		/**
 		 *Switches to the next song if the previous has ended.
 		 */
 	audiopl.addEventListener("ended", ended_next);
@@ -174,7 +287,7 @@ window.onload=function(){
 		tog_but.src="res/pause.png";
 	}
 
-	/**
+		/**
 		 *Updates displayed current time.
 		 */
 	position.addEventListener('input', change_time);
@@ -196,7 +309,7 @@ window.onload=function(){
 		}
 	};
 
-	/**
+		/**
 		 *Moves slider according to current time.
 		 */
 	audiopl.addEventListener("timeupdate", move_slider); 
@@ -236,5 +349,7 @@ window.onload=function(){
 			vol_but.src="res/volume.png";
 		}
 	}
+
 }
+
 
