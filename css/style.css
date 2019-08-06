@@ -114,18 +114,6 @@ nav{
 	padding-top: 73vh;
 
 }
-#chart{
-	position: fixed;
-	margin: 0 auto;
-	top:10vh;
-	max-height:55vh;
-	/*left:5vw;
-	right:5vw;*/
-	/*min-height: 55vh;*/
-	width: 100vw;
-}
-
-
 .slider_container{
 	position: absolute;
 	width:80%;
@@ -225,6 +213,8 @@ nav{
 	opacity: 0.8;
 }
 #chart{
+	max-height:60vh;
+	top:10vh;
 	text-align: center;
-	margin-bottom: 100px;
 }
+
