@@ -219,8 +219,12 @@ nav{
 	padding-left:3vw;
 }
 #canvas{
-	width:100%;
+	width:95%;
 	height:100%;
 	align-content: center;
-	margin: 0 auto;
+	opacity: 0.8;
 }
+#chart{
+	text-align: center;
+}
+
