@@ -200,7 +200,7 @@ function renderFrame() {
     
     const capHeight = 2;
     
-    const barSpacing = 8;
+    const barSpacing = 9;
     const barWidth = 3;
     const barHeight = canvas.height - capHeight;
     
