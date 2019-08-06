@@ -159,7 +159,7 @@ function open_context(){
 	audioSrc.connect(analyser);
 	analyser.connect(audioContext.destination);
 	analyser.smoothingTimeConstant = 0.7;
-	analyser.fftSize = 512;
+	analyser.fftSize = 256;
 	
 	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
 	
@@ -214,9 +214,9 @@ function renderFrame() {
     	cap_style: '#fff',
     	gradient: (() => {
     		const g = ctx.createLinearGradient(0, barHeight, 0, 0);
-		    g.addColorStop(1, '#0f0');
-		    g.addColorStop(0.5, '#ff0');
-		    g.addColorStop(0, '#f00');
+		    g.addColorStop(1, '#0f3443');
+		    g.addColorStop(0.5, '#34e89e');
+		    g.addColorStop(0, 'hsl( 120, 100%, 50% )');
 		    return g;
     	})()
     };
