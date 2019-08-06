@@ -163,8 +163,27 @@ function open_context(){
 	
 	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
 	
+	function setupCanvas(canvas) {
+		// See https://www.html5rocks.com/en/tutorials/canvas/hidpi/
+		
+		// Get the device pixel ratio, falling back to 1.
+		var dpr = window.devicePixelRatio || 1;
+		// Get the size of the canvas in CSS pixels.
+		var rect = canvas.getBoundingClientRect();
+		// Give the canvas pixel dimensions of their CSS
+		// size * the device pixel ratio.
+		canvas.width = rect.width * dpr;
+		canvas.height = rect.height * dpr;
+		var ctx = canvas.getContext('2d');
+		// Scale all drawing operations by the dpr, so you
+		// don't have to worry about the difference.
+		ctx.scale(dpr, dpr);
+		return ctx;
+	}
+	
 	canvas = document.getElementById('canvas');
-	visualctx = canvas.getContext('2d');
+	visualctx = setupCanvas(canvas);
+	
 	
     renderFrame();
 }
@@ -181,7 +200,7 @@ function renderFrame() {
     
     const capHeight = 2;
     
-    const barSpacing = 7;
+    const barSpacing = 8;
     const barWidth = 3;
     const barHeight = canvas.height - capHeight;
     
@@ -222,7 +241,7 @@ function renderFrame() {
     	// Bar
     	ctx.fillStyle = styles.gradient;
     	ctx.fillRect(
-    		i * barSpacing,
+    		barSpacing / 2 + i * barSpacing,
     		barHeight - barHeight * value + capHeight,
     		barWidth,
     		barHeight - barHeight * (1 - value)
@@ -231,7 +250,7 @@ function renderFrame() {
      	// Top of the bar (cap)
     	ctx.fillStyle = styles.cap_style;
     	ctx.fillRect(
-    		i * barSpacing,
+    		barSpacing / 2 + i * barSpacing,
     		barHeight - barHeight * value,
     		barWidth,
     		capHeight
