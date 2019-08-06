@@ -158,8 +158,8 @@ function open_context(){
 	analyser = audioContext.createAnalyser();
 	audioSrc.connect(analyser);
 	analyser.connect(audioContext.destination);
-	analyser.smoothingTimeConstant = 0.6;
-//	analyser.fftSize = 512;
+	analyser.smoothingTimeConstant = 0.7;
+	analyser.fftSize = 512;
 	
 	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
 	
@@ -200,8 +200,8 @@ function renderFrame() {
     
     const capHeight = 2;
     
-    const barSpacing = 9;
-    const barWidth = 3;
+    const barSpacing = 15;
+    const barWidth = 7;
     const barHeight = canvas.height - capHeight;
     
     const nOfBars = Math.round(canvas.width/barSpacing);
