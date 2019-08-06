@@ -118,11 +118,11 @@ nav{
 	position: fixed;
 	margin: 0 auto;
 
-	bottom:35vh;
-	top:15vh;
+	bottom:10vh;
+	top:10vh;
 	/*left:5vw;
 	right:5vw;*/
-	min-height: 60vh;
+	/*min-height: 55vh;*/
 	width: 100vw;
 }
 
