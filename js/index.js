@@ -158,7 +158,7 @@ function open_context(){
 	analyser = audioContext.createAnalyser();
 	audioSrc.connect(analyser);
 	analyser.connect(audioContext.destination);
-	analyser.smoothingTimeConstant = 0.7;
+	analyser.smoothingTimeConstant = 0.6;
 //	analyser.fftSize = 512;
 	
 	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
