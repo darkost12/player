@@ -213,8 +213,11 @@ nav{
 	opacity: 0.8;
 }
 #chart{
+	position: fixed;
+	margin: 0 auto;
 	max-height:60vh;
 	top:10vh;
 	text-align: center;
+	bottom:10vh;
+	width: 100vw;
 }
-
