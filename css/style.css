@@ -117,9 +117,8 @@ nav{
 #chart{
 	position: fixed;
 	margin: 0 auto;
-
-	bottom:10vh;
 	top:10vh;
+	max-height:55vh;
 	/*left:5vw;
 	right:5vw;*/
 	/*min-height: 55vh;*/
