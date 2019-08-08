@@ -1,19 +1,8 @@
-header{
-	padding-top: 20px;
-}
 .buttons{
 	width: 40px;
 	height:40px;
 }
-/*#submit_link{
-	font-family: "venus";
-	opacity: 0.8;
-}
-input[type=submit]{
-	font-size:20px;
-	font-family: Georgia;
-	vertical-align:top;
-}*/
+
 body{
 	padding:0px;
 	margin:0px;
@@ -21,7 +10,7 @@ body{
 	right:0;
 	bottom: 0;
 	left: 0;
-	height:calc(100vh-80px);
+	height:calc(90vh-80px);
 	background-image:linear-gradient(90deg, #c471ed, #f64f59);
 }
 #next_button{
@@ -41,28 +30,18 @@ body{
 .button_round:focus{
 	outline:none;
 }
-/*#youtube_playlist_link{
-	width: 75%;
-	height:30px;
-	position: flex;
-	vertical-align:top;
-	opacity: 0.75;
-}
-#submit_link{
-	height: 30px;
-}*/
 #music_player{
 	display: none;
 }
 #control_panel{
-	padding-top:50px;
+	padding-top:30px;
 	text-align: center;
 	position: flex;
 	height:5vh;
-
 }
 .content{
-	min-height: calc(65vh);
+	max-height:90vh;
+	min-height: 65vh;
 }
 form{
 	text-align: center;
@@ -111,7 +90,7 @@ nav{
 	display:flex;
 	justify-content: center;
 	height:30px;
-	padding-top: 73vh;
+	padding-top: 79vh;
 
 }
 .slider_container{
@@ -149,21 +128,24 @@ nav{
 #current_time{
 	display: inline-block;
 	text-align: right;
-	width:50px;
+	width:40px;
 	font-family: "venus";
 	src: url("../res/venus.ttf");
 	font-size:15px;
 	margin-left:5px;
 }
 #volume_button{
+	margin-left:1vw;
 	width:15px;
+	text-align:left;
 	position: absolute;
 	vertical-align: middle;
 	display:inline-block;
 }
 #volume_regulator{
 	 opacity: 0;
-	 margin-left:-20px;
+
+	 /*margin-left:-20px;*/
 }
 #volume_settings:hover #volume_regulator{
 	opacity: 0.3;
@@ -174,17 +156,18 @@ nav{
 	transition: opacity 0.5s ease-out 2s;
 }
 .slider2 {
+	margin-left:-20px;
   -webkit-appearance: none;
   visibility: visible;
-  position: absolute;
+  position: flex;
   transform: rotate(270deg);
-  width: 15vh;
+  /*width: 15vh;*/
   height: 10px;
   border-radius: 5px;   
   background: #d3d3d3;
   outline: none;
   /*opacity: 0.3;*/
-  margin-left: 5px;
+  /*margin-left: 10vw;*/
   -webkit-transition: .2s;
   transition: opacity .2s;
 }
@@ -202,7 +185,7 @@ nav{
   cursor: pointer;
 }
 #volume_settings{
-	position:absolute;
+	position:flex;
 	padding-left:3vw;
 }
 #canvas{
@@ -216,7 +199,7 @@ nav{
 	position: absolute;
 	margin: 0 auto;
 	max-height:60vh;
-	top:10vh;
+	top:3vh;
 	text-align: center;
 	bottom:10vh;
 	width: 100vw;
