@@ -213,7 +213,7 @@ nav{
 	opacity: 0.8;
 }
 #chart{
-	position: fixed;
+	position: absolute;
 	margin: 0 auto;
 	max-height:60vh;
 	top:10vh;
