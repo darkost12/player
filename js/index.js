@@ -16,7 +16,7 @@ const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
 	var vol_but = document.getElementById('volume_button');		//The link to the <img> element.
 	var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
 	var timing = document.getElementById('current_time');		//The link to the <div> element.
-	var proxy = https://cors-anywhere.herokuapp.com/;
+	var proxy = "https://cors-anywhere.herokuapp.com/";
 	var audioContext;
 	var visualctx;
 	var audioSrc;
