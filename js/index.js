@@ -16,6 +16,7 @@ const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
 	var vol_but = document.getElementById('volume_button');		//The link to the <img> element.
 	var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
 	var timing = document.getElementById('current_time');		//The link to the <div> element.
+	var proxy = https://cors-anywhere.herokuapp.com/;
 	var audioContext;
 	var visualctx;
 	var audioSrc;
@@ -284,7 +285,7 @@ window.onload=function(){
             success: function(data){
             	for (let i=0; i<(data.items).length;i++){
             		received_names.push(((data.items)[i].name).slice(0,((data.items)[i].name).length-4));
-            		received_links.push((data.items)[i].file);
+            		received_links.push((proxy+data.items)[i].file);
             	}
             	console.log('Songs were received successfully!');
             	shuffle_music();
