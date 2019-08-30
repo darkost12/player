@@ -1,4 +1,4 @@
-const token = "AgAAAAA0yS9YAAW1uI7_-EdJd0PdvwziNnu2bxo";
+const token = "AgAAAAA0yS9YAAW1uDyTB0tMu09ulCsTQ-WxhDw";
 /**
  *Gets songs from yadi through REST API and puts in the custom WEB-player. 
  */
