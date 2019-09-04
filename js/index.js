@@ -285,7 +285,7 @@ window.onload=function(){
             success: function(data){
             	for (let i=0; i<(data.items).length;i++){
             		received_names.push(((data.items)[i].name).slice(0,((data.items)[i].name).length-4));
-            		received_links.push((data.items)[i].file);
+            		received_links.push(proxy+(data.items)[i].file);
             	}
             	console.log('Songs were received successfully!');
             	shuffle_music();
