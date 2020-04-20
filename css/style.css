@@ -2,7 +2,9 @@
 	width: 40px;
 	height:40px;
 }
-
+.buttons:focus{
+	outline: none;
+}
 body{
 	padding:0px;
 	margin:0px;
@@ -12,7 +14,7 @@ body{
 	left: 0;
 	width:100%;
 	height:calc(100%);
-	background-image:linear-gradient(90deg, #c471ed, #f64f59);
+	background-image:linear-gradient(90deg, #2196f3, #f64f59);
 }
 #next_button{
 	margin-left: 4px;
@@ -204,4 +206,12 @@ nav{
 	text-align: center;
 	bottom:10vh;
 	width: 100%;
+}
+.no_select {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }

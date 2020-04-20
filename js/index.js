@@ -1,15 +1,16 @@
 /**
- * Gets songs from yadi through REST API and puts in the custom WEB-player. 
+ * Gets songs from AWS S3 through REST API and puts in the custom WEB-player. 
  */
-var received_names = [];	//The information received from the API-call before shuffle.
-var transitional_names = [];//The information in the shuffle process.
-var shuffled_names = [];	//The information after the shuffle process. Ready to be put in the actual play.
-var current_song;			//The global identificator of currently playing song
-var play_flag;				//The Boolean flag of playing status.
+
+var receivedNames = [];	//The information received from the API-call before shuffle.
+var transitionalNames = [];//The information in the shuffle process.
+var shuffledNames = [];	//The information after the shuffle process. Ready to be put in the actual play.
+var currentSong;			//The global identificator of currently playing song
+var playFlag;				//The Boolean flag of playing status.
 var audiopl = document.getElementById('music_player');		//The link to the <audio> element in your HTML code.
-var song_name = document.getElementById('song_name');		//The link to the <p>/<h> element.
-var tog_but = document.getElementById('toggle_button');		//The link to the <img> element.
-var vol_but = document.getElementById('volume_button');		//The link to the <img> element.
+var songName = document.getElementById('song_name');		//The link to the <p>/<h> element.
+var toggleBut = document.getElementById('toggle_button');		//The link to the <img> element.
+var volumeBut = document.getElementById('volume_button');		//The link to the <img> element.
 var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
 var timing = document.getElementById('current_time');		//The link to the <div> element.
 var audioContext, visualctx, audioSrc, analyser;			//Variables for audioContext analysis.
@@ -19,36 +20,36 @@ window.AudioContext = window.AudioContext || window.webkitAudioContext || window
 /**
  * Shuffles music after getting through API call.
  */
-function shuffle_music() {
-	song_name.style.display = 'none';
+function shuffleMusic() {
+	songName.style.display = 'none';
 	audiopl.currentTime = 0;
-	play_flag = false;
+	playFlag = false;
 	audiopl.pause();
-	tog_but.src = "res/play.png";
-	let ctr = received_names.length;	//Fisher-Yates shuffle algorithm
+	toggleBut.src = "res/play.png";
+	let ctr = receivedNames.length;	//Fisher-Yates shuffle algorithm
 	let index, temp;
-	transitional_names = received_names;
+	transitionalNames = receivedNames;
 	while (ctr>0) {
 		index = Math.floor(Math.random() * ctr);
 		ctr--;
-		temp = transitional_names[ctr];
-		transitional_names[ctr] = transitional_names[index];
-		transitional_names[index] = temp;	
+		temp = transitionalNames[ctr];
+		transitionalNames[ctr] = transitionalNames[index];
+		transitionalNames[index] = temp;	
 	}
-	shuffled_names = transitional_names;
+	shuffledNames = transitionalNames;
 	console.log('Shuffle was performed successfully!');
-	current_song = 0;
-	show();
+	currentSong = 0;
+	showFirst();
 }
 
 /**
  * Loads the first element of shuffled song array to the HTML. Also turns off the overlay.
  */	
-function show() {
+function showFirst() {
 	position.value = 1;
 	if (audiopl.paused && audiopl.src == '') {
-		audiopl.src = get_link(shuffled_names[0]);
-		change_title();
+		audiopl.src = getLink(shuffledNames[0]);
+		changeTitle();
 		document.getElementById('overlay').style.display = "none";
 		document.getElementById('load_spinner').style.display = "none";
 	}
@@ -57,56 +58,51 @@ function show() {
 /**
  * Changes title of song on switch. Also removes extension from the title.
  */	
-function change_title() {
-	let title = shuffled_names[current_song];
-	song_name.innerHTML = title.slice(0, (title.length - 4));
-	if (song_name.style.display == 'none')
-		song_name.style.display = 'inline-block';
+function changeTitle() {
+	let title = shuffledNames[currentSong];
+	title = title.replace("AC_DC", "AC/DC")
+	songName.innerHTML = title.slice(0, (title.length - 4));
+	if (songName.style.display == 'none')
+		songName.style.display = 'inline-block';
 }
 
-/**
- * Actually toggles music and changes button source image.
- */
-function toggle() {
-	if (play_flag == true) {
-		audiopl.play();
-		tog_but.src = "res/pause.png";
-	} else {
-		audiopl.pause();
-		tog_but.src = "res/play.png"
-	}
-}
+
 /**
  * Sets the logic of toggle button. Also opens/closes contexts.
  */
-function toggle_music() {
-	if (audiopl.src != '' && audiopl.paused)
-		open_context();
-	else if (audiopl.src != '' && !audiopl.paused)
-		close_context();
-	toggle();
+function toggleMusic() {
+	if (audiopl.src != '' && audiopl.paused) {
+		playFlag = true;
+		openContext();
+		audiopl.play();
+		toggleBut.src = "res/pause.png";
+	}
+	else if (audiopl.src != '' && !audiopl.paused) {
+		playFlag = false;
+		audiopl.pause();
+		toggleBut.src = "res/play.png"
+	}
 }
 
 
 /**
  * Sets the logic of next song button. Also changes visuals.
  */
-function next_music() {
-	close_context();
-	reset_defaults();
-	current_song += 1;
-	if (current_song > (shuffled_names.length - 1))
-		current_song = 0;
-	audiopl.src = get_link(shuffled_names[current_song]);
-	open_context();
-	toggle();
-	change_title();
+function nextSong() {
+	resetDefaults();
+	currentSong += 1;
+	if (currentSong > (shuffledNames.length - 1))
+		currentSong = 0;
+	audiopl.src = getLink(shuffledNames[currentSong]);
+	openContext();
+	toggleMusic();
+	changeTitle();
 }
 
 /**
  * Resets slider variables to defaults.
  */
-function reset_defaults() {
+function resetDefaults() {
 	position.value = 1;
 	audiopl.currentTime = 0;
 }
@@ -114,16 +110,15 @@ function reset_defaults() {
 /**
  * Sets the logic of previous song button. Also visual changes.
  */
-function previous_music() {
-	close_context();
-	reset_defaults();
-	current_song -= 1;
-	if (current_song < 0)
-		current_song = shuffled_names.length - 1;
-	audiopl.src = get_link(shuffled_names[current_song]);
-	open_context();
-	toggle();
-	change_title();
+function previousSong() {
+	resetDefaults();
+	currentSong -= 1;
+	if (currentSong < 0)
+		currentSong = shuffledNames.length - 1;
+	audiopl.src = getLink(shuffledNames[currentSong]);
+	openContext();
+	toggleMusic();
+	changeTitle();
 }
 
 /**
@@ -131,15 +126,14 @@ function previous_music() {
  * @param {string} title. Song[i].Key (title of song).
  * @return {string} url. Signed url for audio.src.
  */
-function get_link(title) {
+function getLink(title) {
 	return "https://public-music-storage.s3.amazonaws.com/" + title;
 }
 
 /**
  * Opens new context for current song.
  */
-function open_context() {
-	play_flag = true;
+function openContext() {
 	// If there is no active audio context, it opens new.
 	if(audioContext === undefined) {
 		audioContext = new AudioContext();
@@ -148,48 +142,38 @@ function open_context() {
 			audioSrc = audioContext.createMediaElementSource(audiopl);
 		console.log("Created AudioContext");
 		console.log("Sample rate: " + audioContext.sampleRate);
-	}
-	analyser = audioContext.createAnalyser();
-	audioSrc.connect(analyser);
-	analyser.connect(audioContext.destination);
-	analyser.smoothingTimeConstant = 0.7;
-	analyser.fftSize = 512;
-	
-	console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
-	
-	/**
-	 * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
- 	 * @param {canvas object} canvas.
-	 * @return {canvas_context} ctx.
-	 */
-	function setupCanvas(canvas) {
-		var dpr = window.devicePixelRatio || 1;
-		var rect = canvas.getBoundingClientRect();
-		canvas.width = rect.width * dpr;
-		canvas.height = rect.height * dpr;
-		var ctx = canvas.getContext('2d');
-		ctx.scale(dpr, dpr);
-		return ctx;
-	}
+		analyser = audioContext.createAnalyser();
+		audioSrc.connect(analyser);
+		analyser.connect(audioContext.destination);
+		analyser.smoothingTimeConstant = 0.7;
+		analyser.fftSize = 256;
+		
+		console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
+
+			/**
+		 * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
+		 * @param {canvas object} canvas.
+		 * @return {canvas_context} ctx.
+		 */
+		function setupCanvas(canvas) {
+			let dpr = window.devicePixelRatio || 1;
+			let rect = canvas.getBoundingClientRect();
+			canvas.width = rect.width * dpr;
+			canvas.height = rect.height * dpr;
+			let ctx = canvas.getContext('2d');
+			ctx.scale(dpr, dpr);
+			return ctx;
+		}
 	
 	canvas = document.getElementById('canvas');
 	visualctx = setupCanvas(canvas);
 	
 	
     render_frame();
-}
-
-/**
- * Stops music, resets slider variables to minimum, and closes context on switching to the next song.
- */
-async function close_context() {
-	play_flag = false;
-	audiopl.pause();
-	if(audioContext !== undefined) {
-		audioSrc.disconnect();
-		analyser.disconnect();
-		console.log('AudioContext has been closed');
 	}
+	
+	
+
 }
 
 /**
@@ -199,8 +183,8 @@ function render_frame() {
     const ctx = visualctx;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const capHeight = 2;
-    const barSpacing = 15;
-    const barWidth = 7;
+    const barSpacing = 25;
+    const barWidth = 13;
     const barHeight = canvas.height - capHeight;
     const nOfBars = Math.round(canvas.width/barSpacing);
     
@@ -252,8 +236,8 @@ function render_frame() {
     		capHeight
     	);
     }
-   	// Closure
-    requestAnimationFrame(render_frame);
+	// Closure
+	requestAnimationFrame(render_frame);
 }
 
 /**
@@ -263,7 +247,7 @@ window.onload = function() {
 	/**
 	 * Loads the overlay at the very beginning.
 	 */
-	(function init_overlay() {
+	(function initOverlay() {
 		document.getElementById('overlay').style.display = "block";
 		document.getElementById('load_spinner').style.display = "block";
 	})();
@@ -271,60 +255,61 @@ window.onload = function() {
 	/**
 	 * Ajax call. Gets information in "Key" field of objects on disk.
 	 */
-	(function load_songs() {
+	(function loadSongs() {
 		$.ajax({
 			type: "GET",
 			url: 'https://public-music-storage.s3.amazonaws.com/',
 			dataType: "xml",
 			success: function (xml) {
 				$(xml).find('Key').each(function() {
-					received_names.push(this.innerHTML);
+					receivedNames.push(this.innerHTML);
 				});
 	            console.log("Songs were received successfully!");
-	            shuffle_music();
+	            shuffleMusic();
 			}
 		});
 	})();
 	
+
 	/**
 	 * Switches to the next song if the previous has ended.
 	 */
-	audiopl.addEventListener("ended", ended_next);
+	audiopl.addEventListener("ended", nextSongOnEnd);
 
-	function ended_next() {
-		current_song += 1;
-		if (current_song > (shuffled_names.length - 1))
-			current_song = 0;
-		change_title();
-		audiopl.src = get_link(shuffled_names[current_song]);
+	function nextSongOnEnd() {
+		currentSong += 1;
+		if (currentSong > (shuffledNames.length - 1))
+			currentSong = 0;
+		changeTitle();
+		audiopl.src = getLink(shuffledNames[currentSong]);
 		audiopl.play();
 	}
 
 	/**
 	 * Updates displayed current time.
 	 */
-	position.addEventListener('input', change_time);
+	position.addEventListener('input', changeTime);
 
-	function change_time() {
+	function changeTime() {
 		if (audiopl.paused)
-			play_flag = false;
+			playFlag = false;
 		else
-			play_flag = true;
+			playFlag = true;
 		audiopl.currentTime = audiopl.duration / 100 * position.value;
 		if (Math.floor(audiopl.currentTime % 60) < 10)
 			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':0' + Math.floor(audiopl.currentTime % 60);
 		else
 			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':' + Math.floor(audiopl.currentTime % 60);
-		if (play_flag == true)
+		if (playFlag == true)
 			audiopl.play();
 	};
 
 	/**
 	 * Moves slider according to current time.
 	 */
-	audiopl.addEventListener("timeupdate", move_slider); 
+	audiopl.addEventListener("timeupdate", moveSlider); 
 
-	function move_slider() {
+	function moveSlider() {
 		if (audiopl.currentTime == 0)
 			position.value = 1;
 		else
@@ -339,24 +324,24 @@ window.onload = function() {
 	/**
 	 * Changes the volume according to the slider position.
 	 */
-	document.getElementById('volume_regulator').addEventListener("input", change_volume);
+	document.getElementById('volume_regulator').addEventListener("input", changeVolume);
 
-	function change_volume() {
+	function changeVolume() {
 		audiopl.volume = document.getElementById('volume_regulator').value;
 	}
 
 	/**
 	 * Toggles mute on click.
 	 */
-	vol_but.addEventListener("click", toggle_mute);
+	volumeBut.addEventListener("click", toggleMute);
 
-	function toggle_mute() {
+	function toggleMute() {
 		if (!audiopl.muted) {
 			audiopl.muted = true;
-			vol_but.src = "res/mute.png";
+			volumeBut.src = "res/mute.png";
 		} else {
 			audiopl.muted = false;
-			vol_but.src = "res/volume.png";
+			volumeBut.src = "res/volume.png";
 		}
 	}
 }
