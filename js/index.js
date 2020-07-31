@@ -221,20 +221,23 @@ function render_frame() {
     	// |---||-- y = barHeight + capHeight
     
     	// Bar
-    	ctx.fillStyle = styles.gradient;
-    	ctx.fillRect(barSpacing / 2 + i * barSpacing,
-    		barHeight - barHeight * value + capHeight,
-    		barWidth,
-    		barHeight - barHeight * (1 - value)
-    	);
-     	// Top of the bar (cap)
-    	ctx.fillStyle = styles.cap_style;
-    	ctx.fillRect(
-    		barSpacing / 2 + i * barSpacing,
-    		barHeight - barHeight * value,
-    		barWidth,
-    		capHeight
-    	);
+    	let x_position = barSpacing / 2 + i * barSpacing;
+	if (!( x_position + barWidth > canvas.width)) {
+    		ctx.fillStyle = styles.gradient;
+    		ctx.fillRect(x_position,
+    			barHeight - barHeight * value + capHeight,
+    			barWidth,
+    			barHeight - barHeight * (1 - value)
+    		);
+     		// Top of the bar (cap)
+    		ctx.fillStyle = styles.cap_style;
+    		ctx.fillRect(
+    			x_position,
+    			barHeight - barHeight * value,
+    			barWidth,
+    			capHeight
+    		);
+	}
     }
 	// Closure
 	requestAnimationFrame(render_frame);
