@@ -14,7 +14,7 @@ var volumeBut = document.getElementById('volume_button');		//The link to the <im
 var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
 var timing = document.getElementById('current_time');		//The link to the <div> element.
 var audioContext, visualctx, audioSrc, analyser;			//Variables for audioContext analysis.
-var canvas, cwidth, cheight, meterWidth, gap, capHeight, capStyle, meterNum;		//Canvas and bars variables.
+var canvas, dpr, capHeight;		//Canvas and bars variables.
 window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;	//Automatic detection of webkit.
 
 /**
@@ -156,7 +156,7 @@ function openContext() {
 		 * @return {canvas_context} ctx.
 		 */
 		function setupCanvas(canvas) {
-			let dpr = window.devicePixelRatio || 1;
+			dpr = window.devicePixelRatio || 1;
 			let rect = canvas.getBoundingClientRect();
 			canvas.width = rect.width * dpr;
 			canvas.height = rect.height * dpr;
@@ -222,7 +222,7 @@ function render_frame() {
     
     	// Bar
     	let x_position = barSpacing / 2 + i * barSpacing;
-	if (!( x_position + barWidth > canvas.width)) {
+	if (( x_position + barWidth) < canvas.width / dpr) {
     		ctx.fillStyle = styles.gradient;
     		ctx.fillRect(x_position,
     			barHeight - barHeight * value + capHeight,
