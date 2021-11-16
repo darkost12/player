@@ -1,13 +1,12 @@
 /**
- * Gets songs from AWS S3 through REST API and puts in the custom WEB-player. 
+ * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
  */
 
 var receivedNames = [];	//The information received from the API-call before shuffle.
 var transitionalNames = [];//The information in the shuffle process.
 var shuffledNames = [];	//The information after the shuffle process. Ready to be put in the actual play.
 var currentSong;			//The global identificator of currently playing song
-var playFlag;				//The Boolean flag of playing status.
-var audiopl = document.getElementById('music_player');		//The link to the <audio> element in your HTML code.
+var player = document.getElementById('music_player');		//The link to the <audio> element in your HTML code.
 var songName = document.getElementById('song_name');		//The link to the <p>/<h> element.
 var toggleBut = document.getElementById('toggle_button');		//The link to the <img> element.
 var volumeBut = document.getElementById('volume_button');		//The link to the <img> element.
@@ -22,19 +21,18 @@ window.AudioContext = window.AudioContext || window.webkitAudioContext || window
  */
 function shuffleMusic() {
 	songName.style.display = 'none';
-	audiopl.currentTime = 0;
-	playFlag = false;
-	audiopl.pause();
+	player.currentTime = 0;
+	navigator.mediaSession.playbackState = 'paused';
 	toggleBut.src = "res/play.png";
 	let ctr = receivedNames.length;	//Fisher-Yates shuffle algorithm
 	let index, temp;
 	transitionalNames = receivedNames;
-	while (ctr>0) {
+	while (ctr > 0) {
 		index = Math.floor(Math.random() * ctr);
 		ctr--;
 		temp = transitionalNames[ctr];
 		transitionalNames[ctr] = transitionalNames[index];
-		transitionalNames[index] = temp;	
+		transitionalNames[index] = temp;
 	}
 	shuffledNames = transitionalNames;
 	console.log('Shuffle was performed successfully!');
@@ -44,11 +42,11 @@ function shuffleMusic() {
 
 /**
  * Loads the first element of shuffled song array to the HTML. Also turns off the overlay.
- */	
+ */
 function showFirst() {
 	position.value = 1;
-	if (audiopl.paused && audiopl.src == '') {
-		audiopl.src = getLink(shuffledNames[0]);
+	if (navigator.mediaSession.playbackState === 'paused' && player.src == '') {
+		player.src = getLink(shuffledNames[0]);
 		changeTitle();
 		document.getElementById('overlay').style.display = "none";
 		document.getElementById('load_spinner').style.display = "none";
@@ -56,12 +54,29 @@ function showFirst() {
 }
 
 /**
+ *
+ * @param {string} title. Song[i].Key (title of song).
+ */
+let updateMetadata = title => {
+	if ('mediaSession' in navigator) {
+		navigator.mediaSession.metadata = new MediaMetadata({
+			title,
+			artwork: [
+				{ src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg', sizes: '320x240', type: 'image/png' },
+			]
+		});
+	};
+};
+
+/**
  * Changes title of song on switch. Also removes extension from the title.
- */	
+ */
 function changeTitle() {
 	let title = shuffledNames[currentSong];
 	title = title.replace("AC_DC", "AC/DC")
-	songName.innerHTML = title.slice(0, (title.length - 4));
+	let preparedTitle = title.slice(0, (title.length - 4));
+	updateMetadata(preparedTitle);
+	songName.innerHTML = preparedTitle;
 	if (songName.style.display == 'none')
 		songName.style.display = 'inline-block';
 }
@@ -71,15 +86,14 @@ function changeTitle() {
  * Sets the logic of toggle button. Also opens/closes contexts.
  */
 function toggleMusic() {
-	if (audiopl.src != '' && audiopl.paused) {
-		playFlag = true;
+	if (player.src != '' && player.paused) {
 		openContext();
-		audiopl.play();
+		player.play();
+		navigator.mediaSession.playbackState = 'playing';
 		toggleBut.src = "res/pause.png";
-	}
-	else if (audiopl.src != '' && !audiopl.paused) {
-		playFlag = false;
-		audiopl.pause();
+	} else if (player.src != '' && !player.paused) {
+		player.pause();
+		navigator.mediaSession.playbackState = 'paused';
 		toggleBut.src = "res/play.png"
 	}
 }
@@ -93,8 +107,9 @@ function nextSong() {
 	currentSong += 1;
 	if (currentSong > (shuffledNames.length - 1))
 		currentSong = 0;
-	audiopl.src = getLink(shuffledNames[currentSong]);
+	player.src = getLink(shuffledNames[currentSong]);
 	openContext();
+	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
 	changeTitle();
 }
@@ -104,7 +119,7 @@ function nextSong() {
  */
 function resetDefaults() {
 	position.value = 1;
-	audiopl.currentTime = 0;
+	player.currentTime = 0;
 }
 
 /**
@@ -115,8 +130,9 @@ function previousSong() {
 	currentSong -= 1;
 	if (currentSong < 0)
 		currentSong = shuffledNames.length - 1;
-	audiopl.src = getLink(shuffledNames[currentSong]);
+	player.src = getLink(shuffledNames[currentSong]);
 	openContext();
+	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
 	changeTitle();
 }
@@ -135,11 +151,11 @@ function getLink(title) {
  */
 function openContext() {
 	// If there is no active audio context, it opens new.
-	if(audioContext === undefined) {
+	if (audioContext === undefined) {
 		audioContext = new AudioContext();
 		// If the source is already connected to context, nothing happens.
 		if (audioSrc === undefined)
-			audioSrc = audioContext.createMediaElementSource(audiopl);
+			audioSrc = audioContext.createMediaElementSource(player);
 		console.log("Created AudioContext");
 		console.log("Sample rate: " + audioContext.sampleRate);
 		analyser = audioContext.createAnalyser();
@@ -147,14 +163,14 @@ function openContext() {
 		analyser.connect(audioContext.destination);
 		analyser.smoothingTimeConstant = 0.7;
 		analyser.fftSize = 256;
-		
+
 		console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
 
-			/**
-		 * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
-		 * @param {canvas object} canvas.
-		 * @return {canvas_context} ctx.
-		 */
+		/**
+	 * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
+	 * @param {canvas object} canvas.
+	 * @return {canvas_context} ctx.
+	 */
 		function setupCanvas(canvas) {
 			dpr = window.devicePixelRatio || 1;
 			let rect = canvas.getBoundingClientRect();
@@ -164,15 +180,15 @@ function openContext() {
 			ctx.scale(dpr, dpr);
 			return ctx;
 		}
-	
-	canvas = document.getElementById('canvas');
-	visualctx = setupCanvas(canvas);
-	
-	
-    render_frame();
+
+		canvas = document.getElementById('canvas');
+		visualctx = setupCanvas(canvas);
+
+
+		render_frame();
 	}
-	
-	
+
+
 
 }
 
@@ -180,65 +196,65 @@ function openContext() {
  * Draws new frame of spectrum visualization.
  */
 function render_frame() {
-    const ctx = visualctx;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const capHeight = 2;
-    const barSpacing = 25;
-    const barWidth = 13;
-    const barHeight = canvas.height - capHeight;
-    const nOfBars = Math.round(canvas.width/barSpacing);
-    
-    const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(frequencyData);
-    
-    const styles = {
-    	cap_style: '#fff',
-    	gradient: (() => {
-    		const g = ctx.createLinearGradient(0, barHeight, 0, 0);
-		    g.addColorStop(1, '#0f3443');
-		    g.addColorStop(0.5, '#34e89e');
-		    g.addColorStop(0, 'hsl( 120, 100%, 50% )');
-		    return g;
-    	})()
-    };
-    // Setting of upper limit on bars so there is no empty bars at the end any more.
-    const frequencyUpper = audioContext.sampleRate / 2;
-    const frequencyLimit = Math.min(16e3, frequencyUpper);
-    
-    // Frequency step per bar.
-    const step = 
-    	(frequencyData.length * (frequencyLimit / frequencyUpper) - 1) 
+	const ctx = visualctx;
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	const capHeight = 2;
+	const barSpacing = 25;
+	const barWidth = 13;
+	const barHeight = canvas.height - capHeight;
+	const nOfBars = Math.round(canvas.width / barSpacing);
+
+	const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+	analyser.getByteFrequencyData(frequencyData);
+
+	const styles = {
+		cap_style: '#fff',
+		gradient: (() => {
+			const g = ctx.createLinearGradient(0, barHeight, 0, 0);
+			g.addColorStop(1, '#0f3443');
+			g.addColorStop(0.5, '#34e89e');
+			g.addColorStop(0, 'hsl( 120, 100%, 50% )');
+			return g;
+		})()
+	};
+	// Setting of upper limit on bars so there is no empty bars at the end any more.
+	const frequencyUpper = audioContext.sampleRate / 2;
+	const frequencyLimit = Math.min(16e3, frequencyUpper);
+
+	// Frequency step per bar.
+	const step =
+		(frequencyData.length * (frequencyLimit / frequencyUpper) - 1)
 		/ (nOfBars - 1);
-    
-    for(let i = 0; i < nOfBars; i++) {
-    	// Normalized value (0..1) - proportion 'bar_height/canvas_height'.
-    	const value = frequencyData[Math.floor(i * step)] / 255;
-    	//  _____________
-    	// |------- y = 0
-    	// |---||-- y = capHeight
-    	// |---||--
-    	// |---||--
-    	// |---||-- y = barHeight + capHeight
-    
-    	// Bar
-    	let x_position = barSpacing / 2 + i * barSpacing;
-	if (( x_position + barWidth) < canvas.width / dpr) {
-    		ctx.fillStyle = styles.gradient;
-    		ctx.fillRect(x_position,
-    			barHeight - barHeight * value + capHeight,
-    			barWidth,
-    			barHeight - barHeight * (1 - value)
-    		);
-     		// Top of the bar (cap)
-    		ctx.fillStyle = styles.cap_style;
-    		ctx.fillRect(
-    			x_position,
-    			barHeight - barHeight * value,
-    			barWidth,
-    			capHeight
-    		);
+
+	for (let i = 0; i < nOfBars; i++) {
+		// Normalized value (0..1) - proportion 'bar_height/canvas_height'.
+		const value = frequencyData[Math.floor(i * step)] / 255;
+		//  _____________
+		// |------- y = 0
+		// |---||-- y = capHeight
+		// |---||--
+		// |---||--
+		// |---||-- y = barHeight + capHeight
+
+		// Bar
+		let x_position = barSpacing / 2 + i * barSpacing;
+		if ((x_position + barWidth) < canvas.width / dpr) {
+			ctx.fillStyle = styles.gradient;
+			ctx.fillRect(x_position,
+				barHeight - barHeight * value + capHeight,
+				barWidth,
+				barHeight - barHeight * (1 - value)
+			);
+			// Top of the bar (cap)
+			ctx.fillStyle = styles.cap_style;
+			ctx.fillRect(
+				x_position,
+				barHeight - barHeight * value,
+				barWidth,
+				capHeight
+			);
+		}
 	}
-    }
 	// Closure
 	requestAnimationFrame(render_frame);
 }
@@ -246,7 +262,7 @@ function render_frame() {
 /**
  * The boot and the listeners' logic.
  */
-window.onload = function() {
+window.onload = function () {
 	/**
 	 * Loads the overlay at the very beginning.
 	 */
@@ -254,7 +270,7 @@ window.onload = function() {
 		document.getElementById('overlay').style.display = "block";
 		document.getElementById('load_spinner').style.display = "block";
 	})();
-	
+
 	/**
 	 * Ajax call. Gets information in "Key" field of objects on disk.
 	 */
@@ -264,28 +280,28 @@ window.onload = function() {
 			url: 'https://public-music-storage.s3.amazonaws.com/',
 			dataType: "xml",
 			success: function (xml) {
-				$(xml).find('Key').each(function() {
+				$(xml).find('Key').each(function () {
 					receivedNames.push(this.innerHTML);
 				});
-	            console.log("Songs were received successfully!");
-	            shuffleMusic();
+				console.log("Songs were received successfully!");
+				shuffleMusic();
 			}
 		});
 	})();
-	
+
 
 	/**
 	 * Switches to the next song if the previous has ended.
 	 */
-	audiopl.addEventListener("ended", nextSongOnEnd);
+	player.addEventListener("ended", nextSongOnEnd);
 
 	function nextSongOnEnd() {
 		currentSong += 1;
 		if (currentSong > (shuffledNames.length - 1))
 			currentSong = 0;
 		changeTitle();
-		audiopl.src = getLink(shuffledNames[currentSong]);
-		audiopl.play();
+		player.src = getLink(shuffledNames[currentSong]);
+		player.play();
 	}
 
 	/**
@@ -294,34 +310,29 @@ window.onload = function() {
 	position.addEventListener('input', changeTime);
 
 	function changeTime() {
-		if (audiopl.paused)
-			playFlag = false;
+		player.currentTime = player.duration / 100 * position.value;
+
+		if (Math.floor(player.currentTime % 60) < 10)
+			timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
 		else
-			playFlag = true;
-		audiopl.currentTime = audiopl.duration / 100 * position.value;
-		if (Math.floor(audiopl.currentTime % 60) < 10)
-			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':0' + Math.floor(audiopl.currentTime % 60);
-		else
-			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':' + Math.floor(audiopl.currentTime % 60);
-		if (playFlag == true)
-			audiopl.play();
+			timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
 	};
 
 	/**
 	 * Moves slider according to current time.
 	 */
-	audiopl.addEventListener("timeupdate", moveSlider); 
+	player.addEventListener("timeupdate", moveSlider);
 
 	function moveSlider() {
-		if (audiopl.currentTime == 0)
+		if (player.currentTime == 0)
 			position.value = 1;
 		else
-			position.value = (audiopl.currentTime * 100 / audiopl.duration);
-		
-		if (Math.floor(audiopl.currentTime % 60) < 10)
-			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':0' + Math.floor(audiopl.currentTime % 60);
-		else 
-			timing.innerHTML = Math.floor(audiopl.currentTime / 60) + ':' + Math.floor(audiopl.currentTime % 60);
+			position.value = (player.currentTime * 100 / player.duration);
+
+		if (Math.floor(player.currentTime % 60) < 10)
+			timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
+		else
+			timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
 	}
 
 	/**
@@ -330,7 +341,7 @@ window.onload = function() {
 	document.getElementById('volume_regulator').addEventListener("input", changeVolume);
 
 	function changeVolume() {
-		audiopl.volume = document.getElementById('volume_regulator').value;
+		player.volume = document.getElementById('volume_regulator').value;
 	}
 
 	/**
@@ -339,12 +350,30 @@ window.onload = function() {
 	volumeBut.addEventListener("click", toggleMute);
 
 	function toggleMute() {
-		if (!audiopl.muted) {
-			audiopl.muted = true;
+		if (!player.muted) {
+			player.muted = true;
 			volumeBut.src = "res/mute.png";
 		} else {
-			audiopl.muted = false;
+			player.muted = false;
 			volumeBut.src = "res/volume.png";
 		}
 	}
+
+	navigator.mediaSession.setActionHandler('previoustrack', () => {
+		previousSong();
+	});
+
+	navigator.mediaSession.setActionHandler('nexttrack', () => {
+		nextSong();
+	});
+
+	navigator.mediaSession.setActionHandler('pause', () => {
+		toggleMusic();
+		navigator.mediaSession.playbackState = 'paused';
+	});
+
+	navigator.mediaSession.setActionHandler('play', () => {
+		toggleMusic();
+		navigator.mediaSession.playbackState = 'playing';
+	});
 }
