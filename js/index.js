@@ -198,7 +198,7 @@ function openContext() {
 function render_frame() {
 	const ctx = visualctx;
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	const capHeight = 12;
+	const capHeight = 2;
 	const barSpacing = 25;
 	const barWidth = 13;
 	const barHeight = canvas.height - capHeight;
@@ -250,7 +250,7 @@ function render_frame() {
 			ctx.fillStyle = styles.cap_style;
 			ctx.fillRect(
 				x_position,
-				canvas.height - barHeight * value,
+				barHeight - barHeight * value,
 				barWidth,
 				capHeight
 			);
