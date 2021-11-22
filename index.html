@@ -3,16 +3,16 @@
 
 <head>
 	<meta charset="UTF-8">
-	<title> My player </title>
+	<title> Darkost's player </title>
 	<link rel="icon" type="image/png" href="res/favicon.ico" />
 	<link rel="stylesheet" href="css/style.css" />
 
-
 	<script defer language="javascript" type="text/javascript" src="js/index.js"></script>
 
-	<script type="text/javascript" src="js/jquery.js"></script>
-	<script src="https://sdk.amazonaws.com/js/aws-sdk-2.524.0.min.js"></script>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script type="text/javascript" src="https://sdk.amazonaws.com/js/aws-sdk-2.524.0.min.js"></script>
 </head>
+
 <body>
 	<div class="content">
 		<div id="overlay" class="overlay">
@@ -45,12 +45,15 @@
 		<footer>
 			<nav>
 				<div id="control_panel">
-					<button type="button" class="button_round no_select" id="previous" onclick="previousSong()"><img
-							src="res/previous.png" id="previous_button" class="buttons no_select" /></button>
-					<button type="button" class="button_round no_select" id="toggle" onclick="toggleMusic()"><img
-							src="res/play.png" id="toggle_button" class="buttons no_select" /></button>
-					<button type="button" class="button_round no_select" id="next" onclick="nextSong()"><img src="res/next.png"
-							id="next_button" class="buttons no_select" /></button>
+					<button type="button" class="button_round no_select" id="previous" onclick="previousSong()">
+						<img src="res/previous.png" id="previous_button" class="buttons no_select" />
+					</button>
+					<button type="button" class="button_round no_select" id="toggle" onclick="toggleMusic()">
+						<img src="res/play.png" id="toggle_button" class="buttons no_select" />
+					</button>
+					<button type="button" class="button_round no_select" id="next" onclick="nextSong()">
+						<img src="res/next.png" id="next_button" class="buttons no_select" />
+					</button>
 				</div>
 			</nav>
 		</footer>

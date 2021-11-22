@@ -2,42 +2,42 @@
  * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
  */
 
-var receivedNames = [];	//The information received from the API-call before shuffle.
-var transitionalNames = [];//The information in the shuffle process.
-var shuffledNames = [];	//The information after the shuffle process. Ready to be put in the actual play.
-var currentSong;			//The global identificator of currently playing song
-var player = document.getElementById('music_player');		//The link to the <audio> element in your HTML code.
-var songName = document.getElementById('song_name');		//The link to the <p>/<h> element.
-var toggleBut = document.getElementById('toggle_button');		//The link to the <img> element.
-var volumeBut = document.getElementById('volume_button');		//The link to the <img> element.
-var position = document.getElementById('current_position');	//The link to the <input type="range"> element.
-var timing = document.getElementById('current_time');		//The link to the <div> element.
-var audioContext, visualctx, audioSrc, analyser;			//Variables for audioContext analysis.
-var canvas, dpr, capHeight;		//Canvas and bars variables.
-window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;	//Automatic detection of webkit.
+var shuffled = []																																									//The information after the shuffle process. Ready to be put in the actual play.
+var currentSong																																										//The global identificator of currently playing song
+var player = document.getElementById('music_player')																							//The link to the <audio> element in HTML code.
+var songName = document.getElementById('song_name')																								//The link to the <p>/<h> element.
+var toggleBut = document.getElementById('toggle_button')																					//The link to the <img> element.
+var volumeBut = document.getElementById('volume_button')																					//The link to the <img> element.
+var position = document.getElementById('current_position')																				//The link to the <input type="range"> element.
+var timing = document.getElementById('current_time')																							//The link to the <div> element.
+var audioContext, visualctx, audioSrc, analyser																										//Variables for audioContext analysis.
+var canvas, dpr, capHeight																																				//Canvas and bars variables.
+window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext	//Automatic detection of webkit.
 
 /**
  * Shuffles music after getting through API call.
+ * @param {string[]} songs. Array of songs' names received from AWS.
  */
-function shuffleMusic() {
-	songName.style.display = 'none';
-	player.currentTime = 0;
-	navigator.mediaSession.playbackState = 'paused';
-	toggleBut.src = "res/play.png";
-	let ctr = receivedNames.length;	//Fisher-Yates shuffle algorithm
-	let index, temp;
-	transitionalNames = receivedNames;
+function shuffleMusic(songs) {
+	songName.style.display = 'none'
+	player.currentTime = 0
+	navigator.mediaSession.playbackState = 'paused'
+	toggleBut.src = "res/play.png"
+	shuffled = songs
+	let ctr = songs.length,																																					//Fisher-Yates shuffle algorithm
+		index,
+		temp
+
 	while (ctr > 0) {
-		index = Math.floor(Math.random() * ctr);
-		ctr--;
-		temp = transitionalNames[ctr];
-		transitionalNames[ctr] = transitionalNames[index];
-		transitionalNames[index] = temp;
+		index = Math.floor(Math.random() * ctr)
+		ctr--
+		temp = shuffled[ctr]
+		shuffled[ctr] = shuffled[index]
+		shuffled[index] = temp
 	}
-	shuffledNames = transitionalNames;
-	console.log('Shuffle was performed successfully!');
-	currentSong = 0;
-	showFirst();
+	currentSong = 0
+
+	showFirst()
 }
 
 /**
@@ -46,11 +46,26 @@ function shuffleMusic() {
 function showFirst() {
 	position.value = 1;
 	if (navigator.mediaSession.playbackState === 'paused' && player.src == '') {
-		player.src = getLink(shuffledNames[0]);
+		player.src = getLink(shuffled[0]);
 		changeTitle();
-		document.getElementById('overlay').style.display = "none";
-		document.getElementById('load_spinner').style.display = "none";
+		disableLoader();
 	}
+}
+
+/**
+ * Shows loader spinner at the very beginning.
+ */
+function initLoader() {
+	document.getElementById('overlay').style.display = "block"
+	document.getElementById('load_spinner').style.display = "block"
+}
+
+/**
+ * Disables shadowing of background and loader spinner.
+ */
+function disableLoader() {
+	document.getElementById('overlay').style.display = "none"
+	document.getElementById('load_spinner').style.display = "none"
 }
 
 /**
@@ -72,7 +87,7 @@ let updateMetadata = title => {
  * Changes title of song on switch. Also removes extension from the title.
  */
 function changeTitle() {
-	let title = shuffledNames[currentSong];
+	let title = shuffled[currentSong];
 	title = title.replace("AC_DC", "AC/DC")
 	let preparedTitle = title.slice(0, (title.length - 4));
 	updateMetadata(preparedTitle);
@@ -105,9 +120,9 @@ function toggleMusic() {
 function nextSong() {
 	resetDefaults();
 	currentSong += 1;
-	if (currentSong > (shuffledNames.length - 1))
+	if (currentSong > (shuffled.length - 1))
 		currentSong = 0;
-	player.src = getLink(shuffledNames[currentSong]);
+	player.src = getLink(shuffled[currentSong]);
 	openContext();
 	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
@@ -129,8 +144,8 @@ function previousSong() {
 	resetDefaults();
 	currentSong -= 1;
 	if (currentSong < 0)
-		currentSong = shuffledNames.length - 1;
-	player.src = getLink(shuffledNames[currentSong]);
+		currentSong = shuffled.length - 1;
+	player.src = getLink(shuffled[currentSong]);
 	openContext();
 	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
@@ -242,7 +257,7 @@ function render_frame() {
 			ctx.fillStyle = styles.gradient;
 			ctx.fillRect(
 				x_position,
-				barHeight - barHeight * value + capHeight,
+				barHeight * (1 - value) + capHeight,
 				barWidth,
 				barHeight * value
 			);
@@ -250,7 +265,7 @@ function render_frame() {
 			ctx.fillStyle = styles.cap_style;
 			ctx.fillRect(
 				x_position,
-				barHeight - barHeight * value,
+				barHeight * (1 - value),
 				barWidth,
 				capHeight
 			);
@@ -261,35 +276,28 @@ function render_frame() {
 }
 
 /**
+ * Ajax call. Gets information in "Key" field of objects on disk.
+ */
+function loadSongs() {
+	$.ajax({
+		type: "GET",
+		url: 'https://public-music-storage.s3.amazonaws.com/',
+		dataType: "xml",
+		success: function (xml) {
+			let songs = []
+			$(xml).find('Key').each((_, name) => songs.push(name.innerHTML))
+			shuffleMusic(songs)
+		}
+	})
+}
+
+/**
  * The boot and the listeners' logic.
  */
 window.onload = function () {
-	/**
-	 * Loads the overlay at the very beginning.
-	 */
-	(function initOverlay() {
-		document.getElementById('overlay').style.display = "block";
-		document.getElementById('load_spinner').style.display = "block";
-	})();
+	initLoader();
 
-	/**
-	 * Ajax call. Gets information in "Key" field of objects on disk.
-	 */
-	(function loadSongs() {
-		$.ajax({
-			type: "GET",
-			url: 'https://public-music-storage.s3.amazonaws.com/',
-			dataType: "xml",
-			success: function (xml) {
-				$(xml).find('Key').each(function () {
-					receivedNames.push(this.innerHTML);
-				});
-				console.log("Songs were received successfully!");
-				shuffleMusic();
-			}
-		});
-	})();
-
+	loadSongs();
 
 	/**
 	 * Switches to the next song if the previous has ended.
@@ -298,10 +306,10 @@ window.onload = function () {
 
 	function nextSongOnEnd() {
 		currentSong += 1;
-		if (currentSong > (shuffledNames.length - 1))
+		if (currentSong > (shuffled.length - 1))
 			currentSong = 0;
 		changeTitle();
-		player.src = getLink(shuffledNames[currentSong]);
+		player.src = getLink(shuffled[currentSong]);
 		player.play();
 	}
 
