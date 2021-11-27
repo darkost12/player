@@ -2,28 +2,35 @@
  * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
  */
 
-var shuffled = []																																									//The information after the shuffle process. Ready to be put in the actual play.
+var songList = []																																									//The information after the shuffle process. Ready to be put in the actual play.
 var currentSong																																										//The global identificator of currently playing song
 var player = document.getElementById('music_player')																							//The link to the <audio> element in HTML code.
+var timing = document.getElementById('current_time')																							//The link to the <div> element.
 var songName = document.getElementById('song_name')																								//The link to the <p>/<h> element.
+var position = document.getElementById('current_position')																				//The link to the <input type="range"> element.
 var toggleBut = document.getElementById('toggle_button')																					//The link to the <img> element.
 var volumeBut = document.getElementById('volume_button')																					//The link to the <img> element.
-var position = document.getElementById('current_position')																				//The link to the <input type="range"> element.
-var timing = document.getElementById('current_time')																							//The link to the <div> element.
 var audioContext, visualctx, audioSrc, analyser																										//Variables for audioContext analysis.
 var canvas, dpr, capHeight																																				//Canvas and bars variables.
-window.AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext	//Automatic detection of webkit.
+
+let titleReplaces = [                                                                             //List of title transitions.
+	{ from: '.mp3', to: '' },
+	{ from: 'AC_DC', to: 'AC/DC' }
+]
+
+window.AudioContext =																																						  //Automatic detection of webkit.
+	window.AudioContext || window.webkitAudioContext || window.mozAudioContext
 
 /**
  * Shuffles music after getting through API call.
  * @param {string[]} songs. Array of songs' names received from AWS.
  */
 function shuffleMusic(songs) {
-	songName.style.display = 'none'
 	player.currentTime = 0
 	navigator.mediaSession.playbackState = 'paused'
 	toggleBut.src = "res/play.png"
-	shuffled = songs
+	songList = songs
+
 	let ctr = songs.length,																																					//Fisher-Yates shuffle algorithm
 		index,
 		temp
@@ -31,9 +38,9 @@ function shuffleMusic(songs) {
 	while (ctr > 0) {
 		index = Math.floor(Math.random() * ctr)
 		ctr--
-		temp = shuffled[ctr]
-		shuffled[ctr] = shuffled[index]
-		shuffled[index] = temp
+		temp = songList[ctr]
+		songList[ctr] = songList[index]
+		songList[index] = temp
 	}
 	currentSong = 0
 
@@ -41,14 +48,15 @@ function shuffleMusic(songs) {
 }
 
 /**
- * Loads the first element of shuffled song array to the HTML. Also turns off the overlay.
+ * Loads the first element of shuffled song list to the HTML. Also turns off the overlay.
  */
 function showFirst() {
 	position.value = 1;
 	if (navigator.mediaSession.playbackState === 'paused' && player.src == '') {
-		player.src = getLink(shuffled[0]);
-		changeTitle();
+		player.src = link(songList[0]);
+		updateTitle();
 		disableLoader();
+		songName.style.display = 'inline-block';
 	}
 }
 
@@ -84,18 +92,39 @@ let updateMetadata = title => {
 };
 
 /**
- * Changes title of song on switch. Also removes extension from the title.
+ * Performs title transformations.
+ * @param {string} title. Initial name of song with extensions.
+ * @return {string} preparedTitle
  */
-function changeTitle() {
-	let title = shuffled[currentSong];
-	title = title.replace("AC_DC", "AC/DC")
-	let preparedTitle = title.slice(0, (title.length - 4));
-	updateMetadata(preparedTitle);
-	songName.innerHTML = preparedTitle;
-	if (songName.style.display == 'none')
-		songName.style.display = 'inline-block';
+function prepareTitle(title) {
+	return titleReplaces.reduce((p, c) => p.replace(c.from, c.to), title)
 }
 
+/**
+ * Updates title of song on switch. Also removes extension from the title.
+ */
+function updateTitle() {
+	let title = prepareTitle(songList[currentSong])
+
+	songName.innerHTML = title;
+	updateMetadata(title);
+}
+
+/**
+ * Handles song index when switching from last song in list to the first.
+ */
+function firstFromLast() {
+	if (currentSong > (songList.length - 1))
+		currentSong = 0;
+}
+
+/**
+ * Handles song index when switching from the first in list to last.
+ */
+function lastFromFirst() {
+	if (currentSong < 0)
+		currentSong = songList.length - 1;
+}
 
 /**
  * Sets the logic of toggle button. Also opens/closes contexts.
@@ -118,38 +147,26 @@ function toggleMusic() {
  * Sets the logic of next song button. Also changes visuals.
  */
 function nextSong() {
-	resetDefaults();
 	currentSong += 1;
-	if (currentSong > (shuffled.length - 1))
-		currentSong = 0;
-	player.src = getLink(shuffled[currentSong]);
+	firstFromLast();
+	player.src = link(songList[currentSong]);
 	openContext();
 	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
-	changeTitle();
-}
-
-/**
- * Resets slider variables to defaults.
- */
-function resetDefaults() {
-	position.value = 1;
-	player.currentTime = 0;
+	updateTitle();
 }
 
 /**
  * Sets the logic of previous song button. Also visual changes.
  */
 function previousSong() {
-	resetDefaults();
 	currentSong -= 1;
-	if (currentSong < 0)
-		currentSong = shuffled.length - 1;
-	player.src = getLink(shuffled[currentSong]);
+	lastFromFirst();
+	player.src = link(songList[currentSong]);
 	openContext();
 	navigator.mediaSession.playbackState = 'paused';
 	toggleMusic();
-	changeTitle();
+	updateTitle();
 }
 
 /**
@@ -157,62 +174,68 @@ function previousSong() {
  * @param {string} title. Song[i].Key (title of song).
  * @return {string} url. Signed url for audio.src.
  */
-function getLink(title) {
+function link(title) {
 	return "https://public-music-storage.s3.amazonaws.com/" + title;
+}
+
+/**
+ * Based on current timing of audio component fill the text area left of position element.
+ */
+function updateDisplayedTime() {
+	if (Math.floor(player.currentTime % 60) < 10)
+		timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
+	else
+		timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
+}
+
+/**
+ * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
+ * @param {canvas object} canvas.
+ * @return {canvas_context} ctx.
+ */
+function setupCanvas(canvas) {
+	dpr = window.devicePixelRatio || 1;
+	let rect = canvas.getBoundingClientRect();
+	canvas.width = rect.width * dpr;
+	canvas.height = rect.height * dpr;
+	let ctx = canvas.getContext('2d');
+	ctx.scale(dpr, dpr);
+	return ctx;
 }
 
 /**
  * Opens new context for current song.
  */
 function openContext() {
-	// If there is no active audio context, it opens new.
-	if (audioContext === undefined) {
+	if (!audioContext) {
 		audioContext = new AudioContext();
-		// If the source is already connected to context, nothing happens.
-		if (audioSrc === undefined)
+
+		if (!audioSrc)
 			audioSrc = audioContext.createMediaElementSource(player);
-		console.log("Created AudioContext");
-		console.log("Sample rate: " + audioContext.sampleRate);
+
 		analyser = audioContext.createAnalyser();
 		audioSrc.connect(analyser);
 		analyser.connect(audioContext.destination);
 		analyser.smoothingTimeConstant = 0.7;
 		analyser.fftSize = 512;
 
-		console.log('AudioContext is up, sample rate: ' + audioContext.sampleRate);
-
-		/**
-	 * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
-	 * @param {canvas object} canvas.
-	 * @return {canvas_context} ctx.
-	 */
-		function setupCanvas(canvas) {
-			dpr = window.devicePixelRatio || 1;
-			let rect = canvas.getBoundingClientRect();
-			canvas.width = rect.width * dpr;
-			canvas.height = rect.height * dpr;
-			let ctx = canvas.getContext('2d');
-			ctx.scale(dpr, dpr);
-			return ctx;
+		if (!visualctx) {
+			canvas = document.getElementById('canvas');
+			visualctx = setupCanvas(canvas);
 		}
 
-		canvas = document.getElementById('canvas');
-		visualctx = setupCanvas(canvas);
-
-
-		render_frame();
+		renderFrame();
 	}
-
-
-
 }
 
 /**
  * Draws new frame of spectrum visualization.
  */
-function render_frame() {
+function renderFrame() {
 	const ctx = visualctx;
+
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+
 	const capHeight = 2;
 	const barSpacing = 25;
 	const barWidth = 13;
@@ -232,26 +255,17 @@ function render_frame() {
 			return g;
 		})()
 	};
-	// Setting of upper limit on bars so there is no empty bars at the end any more.
+
 	const frequencyUpper = audioContext.sampleRate / 2;
 	const frequencyLimit = Math.min(16e3, frequencyUpper);
 
-	// Frequency step per bar.
 	const step =
 		(frequencyData.length * (frequencyLimit / frequencyUpper) - 1)
 		/ (nOfBars - 1);
 
 	for (let i = 0; i < nOfBars; i++) {
-		// Normalized value (0..1) - proportion 'bar_height/canvas_height'.
 		const value = frequencyData[Math.floor(i * step)] / 255;
-		//  _____________
-		// |------- y = 0
-		// |---||-- y = capHeight
-		// |---||--
-		// |---||--
-		// |---||-- y = barHeight + capHeight
 
-		// Bar
 		let x_position = barSpacing / 2 + i * barSpacing;
 		if ((x_position + barWidth) < canvas.width / dpr) {
 			ctx.fillStyle = styles.gradient;
@@ -261,7 +275,7 @@ function render_frame() {
 				barWidth,
 				barHeight * value
 			);
-			// Top of the bar (cap)
+
 			ctx.fillStyle = styles.cap_style;
 			ctx.fillRect(
 				x_position,
@@ -271,8 +285,8 @@ function render_frame() {
 			);
 		}
 	}
-	// Closure
-	requestAnimationFrame(render_frame);
+
+	requestAnimationFrame(renderFrame);
 }
 
 /**
@@ -292,6 +306,59 @@ function loadSongs() {
 }
 
 /**
+ * Switches to the next song if the previous has ended.
+ */
+function nextSongOnEnd() {
+	currentSong += 1
+	firstFromLast()
+	updateTitle()
+	player.src = link(songList[currentSong])
+	player.play()
+}
+
+/**
+ * Updates displayed current time.
+ */
+function changeTime() {
+	player.currentTime = player.duration / 100 * position.value;
+
+	updateDisplayedTime();
+};
+
+/**
+ * Moves slider according to current time.
+ */
+function moveSlider() {
+	if (player.currentTime == 0)
+		position.value = 1;
+	else
+		position.value = (player.currentTime * 100 / player.duration);
+
+	updateDisplayedTime();
+}
+
+
+/**
+ * Changes the volume according to the slider position.
+ */
+function changeVolume() {
+	player.volume = document.getElementById('volume_regulator').value;
+}
+
+/**
+ * Toggles mute on click.
+ */
+function toggleMute() {
+	if (!player.muted) {
+		player.muted = true;
+		volumeBut.src = "res/mute.png";
+	} else {
+		player.muted = false;
+		volumeBut.src = "res/volume.png";
+	}
+}
+
+/**
  * The boot and the listeners' logic.
  */
 window.onload = function () {
@@ -299,74 +366,12 @@ window.onload = function () {
 
 	loadSongs();
 
-	/**
-	 * Switches to the next song if the previous has ended.
-	 */
 	player.addEventListener("ended", nextSongOnEnd);
-
-	function nextSongOnEnd() {
-		currentSong += 1;
-		if (currentSong > (shuffled.length - 1))
-			currentSong = 0;
-		changeTitle();
-		player.src = getLink(shuffled[currentSong]);
-		player.play();
-	}
-
-	/**
-	 * Updates displayed current time.
-	 */
 	position.addEventListener('input', changeTime);
-
-	function changeTime() {
-		player.currentTime = player.duration / 100 * position.value;
-
-		if (Math.floor(player.currentTime % 60) < 10)
-			timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
-		else
-			timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
-	};
-
-	/**
-	 * Moves slider according to current time.
-	 */
 	player.addEventListener("timeupdate", moveSlider);
-
-	function moveSlider() {
-		if (player.currentTime == 0)
-			position.value = 1;
-		else
-			position.value = (player.currentTime * 100 / player.duration);
-
-		if (Math.floor(player.currentTime % 60) < 10)
-			timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
-		else
-			timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
-	}
-
-	/**
-	 * Changes the volume according to the slider position.
-	 */
 	document.getElementById('volume_regulator').addEventListener("input", changeVolume);
-
-	function changeVolume() {
-		player.volume = document.getElementById('volume_regulator').value;
-	}
-
-	/**
-	 * Toggles mute on click.
-	 */
 	volumeBut.addEventListener("click", toggleMute);
 
-	function toggleMute() {
-		if (!player.muted) {
-			player.muted = true;
-			volumeBut.src = "res/mute.png";
-		} else {
-			player.muted = false;
-			volumeBut.src = "res/volume.png";
-		}
-	}
 
 	navigator.mediaSession.setActionHandler('previoustrack', () => {
 		previousSong();
