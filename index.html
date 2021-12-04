@@ -2,60 +2,57 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<title> Darkost's player </title>
-	<link rel="icon" type="image/png" href="res/favicon.ico" />
-	<link rel="stylesheet" href="css/style.css" />
+  <meta charset="UTF-8">
+  <title> Darkost's player </title>
+  <link rel="icon" type="image/png" href="res/favicon.ico" />
+  <link rel="stylesheet" href="css/style.css" />
 
-	<script defer language="javascript" type="text/javascript" src="js/index.js"></script>
-
-	<script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-	<script type="text/javascript" src="https://sdk.amazonaws.com/js/aws-sdk-2.524.0.min.js"></script>
+  <script defer language="javascript" type="text/javascript" src="js/index.js"></script>
+  <script type="text/javascript" src="https://sdk.amazonaws.com/js/aws-sdk-2.524.0.min.js"></script>
 </head>
 
 <body>
-	<div class="content">
-		<div id="overlay" class="overlay">
-			<img id="load_spinner" src="res/loading.png" />
-		</div>
-		<div id="chart">
-			<canvas id="canvas"> </canvas>
-		</div>
-		<section id="equalizer">
-			<div>
-				<audio id="music_player" preload="metadata" crossorigin="anonymous" />
-			</div>
-		</section>
-	</div>
-	<div id="footing_span">
-		<div id="name_holder">
-			<p id="song_name">Name of song</p>
-		</div>
-		<div id="status_string">
-			<div id="volume_settings">
-				<img src="res/volume.png" id="volume_button" />
-				<input type="range" min="0" max="1" value="0.5" step="0.01" class="slider2" id="volume_regulator">
-			</div>
-			<div class="slider_container">
-				<input type="range" min="1" max="100" value="1" class="slider" id="current_position">
-
-			</div>
-			<div id="current_time"> --:-- </div>
-		</div>
-		<footer>
-			<nav>
-				<div id="control_panel">
-					<button type="button" class="button_round no_select" id="previous" onclick="previousSong()">
-						<img src="res/previous.png" id="previous_button" class="buttons no_select" />
-					</button>
-					<button type="button" class="button_round no_select" id="toggle" onclick="toggleMusic()">
-						<img src="res/play.png" id="toggle_button" class="buttons no_select" />
-					</button>
-					<button type="button" class="button_round no_select" id="next" onclick="nextSong()">
-						<img src="res/next.png" id="next_button" class="buttons no_select" />
-					</button>
-				</div>
-			</nav>
-		</footer>
-	</div>
+  <div class="content">
+    <div class="overlay">
+      <img class="load-spinner" src="res/loading.png" />
+    </div>
+    <div class="chart">
+      <canvas class="canvas"> </canvas>
+    </div>
+    <section class="equalizer">
+      <div>
+        <audio class="music-player" preload="metadata" crossorigin="anonymous" />
+      </div>
+    </section>
+  </div>
+  <div class="footing-span">
+    <div class="name-holder">
+      <p class="song-name">Name of song</p>
+    </div>
+    <div class="status-string">
+      <div class="volume-settings">
+        <img src="res/volume.png" class="volume-button" />
+        <input type="range" min="0" max="1" value="0.5" step="0.01" class="slider2 volume-regulator">
+      </div>
+      <div class="slider-container">
+        <input type="range" min="1" max="100" value="1" class="slider current-position">
+      </div>
+      <div class="current-time"> --:-- </div>
+    </div>
+    <footer>
+      <nav>
+        <div class="control-panel">
+          <button type="button" class="button-round no-select previous" onclick="previousSong()">
+            <img src="res/previous.png" class="buttons previous-button no-select" />
+          </button>
+          <button type="button" class="button-round no-select toggle" onclick="toggleMusic()">
+            <img src="res/play.png" class="buttons toggle-button no-select" />
+          </button>
+          <button type="button" class="button-round no-select next" onclick="nextSong()">
+            <img src="res/next.png" class="buttons next-button no-select" />
+          </button>
+        </div>
+      </nav>
+    </footer>
+  </div>
 </body>
