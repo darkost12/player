@@ -4,15 +4,15 @@
 const bucket = 'https://public-music-storage.s3.amazonaws.com/'                                   //AWS S3 bucket, that contains music.
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
+let overlay = document.getElementsByClassName('overlay')[0]                                       //Shadowed loading overlay
+let songName = document.getElementsByClassName('song-name')[0]                                    //The link to the <p>/<h> element.
 let player = document.getElementsByClassName('music-player')[0]                                   //The link to the <audio> element in HTML code.
 let timing = document.getElementsByClassName('current-time')[0]                                   //The link to the <div> element.
-let songName = document.getElementsByClassName('song-name')[0]                                    //The link to the <p>/<h> element.
-let position = document.getElementsByClassName('current-position')[0]                             //The link to the <input type="range"> element.
+let spinner = document.getElementsByClassName('load-spinner')[0]                                  //Spinner on loading overlay
 let toggleBut = document.getElementsByClassName('toggle-button')[0]                               //The link to the <img> element.
 let volumeBut = document.getElementsByClassName('volume-button')[0]                               //The link to the <img> element.
-let overlay = document.getElementsByClassName('overlay')[0]                                       //Shadowed loading overlay
-let spinner = document.getElementsByClassName('load-spinner')[0]                                  //Spinner on loading overlay
-let audioContext, visualctx, audioSrc, analyser                                                   //Variables for audioContext analysis.
+let position = document.getElementsByClassName('current-position')[0]                             //The link to the <input type="range"> element.
+let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, dpr, capHeight                                                                        //Canvas and bars letiables.
 
 const titleReplaces = [                                                                           //List of title transitions.
@@ -133,8 +133,8 @@ function lastFromFirst() {
  */
 function toggleMusic() {
   if (player.src != '' && player.paused) {
-    openContext();
     player.play();
+    openContext();
     navigator.mediaSession.playbackState = 'playing';
     toggleBut.src = "res/pause.png";
   } else if (player.src != '' && !player.paused) {
@@ -221,20 +221,20 @@ function openContext() {
     analyser.smoothingTimeConstant = 0.7;
     analyser.fftSize = 512;
 
-    if (!visualctx) {
+    if (!visualContext) {
       canvas = document.getElementsByClassName('canvas')[0];
-      visualctx = setupCanvas(canvas);
+      visualContext = setupCanvas(canvas);
     }
-
-    renderFrame();
   }
+
+  renderFrame()
 }
 
 /**
  * Draws new frame of spectrum visualization.
  */
 function renderFrame() {
-  const ctx = visualctx;
+  const ctx = visualContext;
 
   let innerHeight = canvas.height / dpr
   let innerWidth = canvas.width / dpr
@@ -291,7 +291,25 @@ function renderFrame() {
     }
   }
 
-  requestAnimationFrame(renderFrame)
+  if (!player.paused && !player.muted) {
+    requestAnimationFrame(renderFrame)
+  } else {
+    ctx.clearRect(0, 0, innerWidth, innerHeight)
+
+    for (let i = 0; i < nOfBars; i++) {
+      const xPosition = barSpacing * (i + 0.5)
+
+      if ((xPosition + barWidth) < innerWidth) {
+        ctx.fillStyle = styles.capStyle;
+        ctx.fillRect(
+          xPosition,
+          barHeight,
+          barWidth,
+          capHeight
+        );
+      }
+    }
+  }
 }
 
 /**

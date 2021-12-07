@@ -112,7 +112,7 @@ nav {
   width: 100%;
 }
 
-.slider {
+.current-position {
   -webkit-appearance: none;
   display: inline-block;
   height: 10px;
@@ -125,11 +125,11 @@ nav {
   transition: opacity .2s;
 }
 
-.slider:hover {
+.current-position:hover {
   opacity: 0.5;
 }
 
-.slider::-webkit-slider-thumb {
+.current-position::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 25px;
@@ -166,7 +166,7 @@ nav {
   transition: opacity 0.5s ease-out 2s;
 }
 
-.slider2 {
+.volume-regulator {
   margin-left:-15px;
    opacity: 0;
   display: inline-block;
@@ -183,11 +183,11 @@ nav {
 
 }
 
-.slider2:hover {
+.volume-regulator:hover {
   opacity: 0.5;
 }
 
-.slider2::-webkit-slider-thumb {
+.volume-regulator::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 25px;
