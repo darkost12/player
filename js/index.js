@@ -2,18 +2,18 @@
  * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
  */
 const bucket = 'https://public-music-storage.s3.amazonaws.com/'                                   //AWS S3 bucket, that contains music.
+const overlay = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
+const songName = document.getElementsByClassName('song-name')[0]                                  //The link to the <h>/<h> element.
+const player = document.getElementsByClassName('music-player')[0]                                 //The link to the <audio> element in HTML code.
+const timing = document.getElementsByClassName('current-time')[0]                                 //The link to the <div> element.
+const spinner = document.getElementsByClassName('load-spinner')[0]                                //Spinner on loading overlay
+const toggleBut = document.getElementsByClassName('toggle-button')[0]                             //The link to the <img> element.
+const volumeBut = document.getElementsByClassName('volume-button')[0]                             //The link to the <img> element.
+const position = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
-let overlay = document.getElementsByClassName('overlay')[0]                                       //Shadowed loading overlay
-let songName = document.getElementsByClassName('song-name')[0]                                    //The link to the <p>/<h> element.
-let player = document.getElementsByClassName('music-player')[0]                                   //The link to the <audio> element in HTML code.
-let timing = document.getElementsByClassName('current-time')[0]                                   //The link to the <div> element.
-let spinner = document.getElementsByClassName('load-spinner')[0]                                  //Spinner on loading overlay
-let toggleBut = document.getElementsByClassName('toggle-button')[0]                               //The link to the <img> element.
-let volumeBut = document.getElementsByClassName('volume-button')[0]                               //The link to the <img> element.
-let position = document.getElementsByClassName('current-position')[0]                             //The link to the <input type="range"> element.
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
-let canvas, dpr, capHeight                                                                        //Canvas and bars letiables.
+let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
 
 const titleReplaces = [                                                                           //List of title transitions.
   { from: '.mp3', to: '' },
@@ -53,12 +53,14 @@ function shuffleMusic(songs) {
  * Loads the first element of shuffled song list to the HTML. Also turns off the overlay.
  */
 function showFirst() {
-  position.value = 1;
+  position.value = 1
+
   if (navigator.mediaSession.playbackState === 'paused' && player.src == '') {
-    player.src = link(songList[0]);
-    updateTitle();
-    disableLoader();
-    songName.style.display = 'inline-block';
+    updateTitle()
+    disableLoader()
+
+    player.src = link(songList[0])
+    songName.style.display = 'inline-block'
   }
 }
 
@@ -79,19 +81,18 @@ function disableLoader() {
 }
 
 /**
- *
+ * Updates session data on changing of song.
  * @param {string} title. Song[i].Key (title of song).
  */
-let updateMetadata = title => {
-  if ('mediaSession' in navigator) {
+function updateMetadata(title) {
+  if ('mediaSession' in navigator)
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artwork: [
         { src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg', sizes: '320x240', type: 'image/png' },
       ]
-    });
-  };
-};
+    })
+}
 
 /**
  * Performs title transformations.
@@ -106,10 +107,10 @@ function prepareTitle(title) {
  * Updates title of song on switch. Also removes extension from the title.
  */
 function updateTitle() {
-  let title = prepareTitle(songList[currentSong])
+  const title = prepareTitle(songList[currentSong])
 
-  songName.innerHTML = title;
-  updateMetadata(title);
+  songName.innerHTML = title
+  updateMetadata(title)
 }
 
 /**
@@ -117,7 +118,7 @@ function updateTitle() {
  */
 function firstFromLast() {
   if (currentSong > (songList.length - 1))
-    currentSong = 0;
+    currentSong = 0
 }
 
 /**
@@ -125,7 +126,7 @@ function firstFromLast() {
  */
 function lastFromFirst() {
   if (currentSong < 0)
-    currentSong = songList.length - 1;
+    currentSong = songList.length - 1
 }
 
 /**
@@ -133,42 +134,44 @@ function lastFromFirst() {
  */
 function toggleMusic() {
   if (player.src != '' && player.paused) {
-    player.play();
-    openContext();
-    navigator.mediaSession.playbackState = 'playing';
-    toggleBut.src = "res/pause.png";
+    player.play()
+    openContext()
+
+    navigator.mediaSession.playbackState = 'playing'
+    toggleBut.src = "res/pause.png"
   } else if (player.src != '' && !player.paused) {
-    player.pause();
-    navigator.mediaSession.playbackState = 'paused';
+    player.pause()
+
+    navigator.mediaSession.playbackState = 'paused'
     toggleBut.src = "res/play.png"
   }
 }
 
+/**
+ * Updates song on changing of index.
+ */
+function changeSong() {
+  player.src = link(songList[currentSong])
+  openContext()
+  navigator.mediaSession.playbackState = 'paused'
+  toggleMusic()
+  updateTitle()
+}
 
 /**
  * Sets the logic of next song button. Also changes visuals.
  */
 function nextSong() {
-  currentSong += 1;
-  firstFromLast();
-  player.src = link(songList[currentSong]);
-  openContext();
-  navigator.mediaSession.playbackState = 'paused';
-  toggleMusic();
-  updateTitle();
+  incrementSong()
+  changeSong()
 }
 
 /**
  * Sets the logic of previous song button. Also visual changes.
  */
 function previousSong() {
-  currentSong -= 1;
-  lastFromFirst();
-  player.src = link(songList[currentSong]);
-  openContext();
-  navigator.mediaSession.playbackState = 'paused';
-  toggleMusic();
-  updateTitle();
+  decrementSong()
+  changeSong()
 }
 
 /**
@@ -177,7 +180,7 @@ function previousSong() {
  * @return {string} url. Signed url for audio.src.
  */
 function link(title) {
-  return "https://public-music-storage.s3.amazonaws.com/" + title;
+  return "https://public-music-storage.s3.amazonaws.com/" + title
 }
 
 /**
@@ -185,9 +188,9 @@ function link(title) {
  */
 function updateDisplayedTime() {
   if (Math.floor(player.currentTime % 60) < 10)
-    timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60);
+    timing.innerHTML = Math.floor(player.currentTime / 60) + ':0' + Math.floor(player.currentTime % 60)
   else
-    timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60);
+    timing.innerHTML = Math.floor(player.currentTime / 60) + ':' + Math.floor(player.currentTime % 60)
 }
 
 /**
@@ -195,14 +198,15 @@ function updateDisplayedTime() {
  * @param {canvas object} canvas.
  * @return {canvas_context} ctx.
  */
-function setupCanvas(canvas) {
-  dpr = window.devicePixelRatio || 1;
-  let rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  let ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  return ctx;
+function setupVisualContext(canvas) {
+  dpr = window.devicePixelRatio || 1
+  const rect = canvas.getBoundingClientRect()
+  canvas.width = rect.width * dpr
+  canvas.height = rect.height * dpr
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+
+  visualContext = ctx
 }
 
 /**
@@ -210,20 +214,20 @@ function setupCanvas(canvas) {
  */
 function openContext() {
   if (!audioContext) {
-    audioContext = new AudioContext();
+    audioContext = new AudioContext()
 
     if (!audioSrc)
-      audioSrc = audioContext.createMediaElementSource(player);
+      audioSrc = audioContext.createMediaElementSource(player)
 
-    analyser = audioContext.createAnalyser();
-    audioSrc.connect(analyser);
-    analyser.connect(audioContext.destination);
-    analyser.smoothingTimeConstant = 0.7;
-    analyser.fftSize = 512;
+    analyser = audioContext.createAnalyser()
+    audioSrc.connect(analyser)
+    analyser.connect(audioContext.destination)
+    analyser.smoothingTimeConstant = 0.7
+    analyser.fftSize = 512
 
     if (!visualContext) {
-      canvas = document.getElementsByClassName('canvas')[0];
-      visualContext = setupCanvas(canvas);
+      canvas = document.getElementsByClassName('canvas')[0]
+      setupVisualContext(canvas)
     }
   }
 
@@ -231,82 +235,107 @@ function openContext() {
 }
 
 /**
- * Draws new frame of spectrum visualization.
+ * Initialize canvas options.
  */
-function renderFrame() {
-  const ctx = visualContext;
-
-  let innerHeight = canvas.height / dpr
-  let innerWidth = canvas.width / dpr
-
-  ctx.clearRect(0, 0, innerWidth, innerHeight);
-
-  const capHeight = 2;
-  const barSpacing = 25;
-  const barWidth = 13;
-  const barHeight = innerHeight - capHeight;
-  const nOfBars = Math.round(innerWidth / barSpacing);
-
-  const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(frequencyData);
-
+function initializeOptions() {
+  const innerHeight = canvas.height / dpr
+  const innerWidth = canvas.width / dpr
+  const capHeight = 2
+  const barWidth = 13
+  const barSpacing = 25
+  const barHeight = innerHeight - capHeight
+  const nOfBars = Math.round(innerWidth / barSpacing)
   const styles = {
     capStyle: '#fff',
     gradient: (() => {
-      let g = ctx.createLinearGradient(0, barHeight, 0, 0);
-      g.addColorStop(1, '#0f3443');
-      g.addColorStop(0.5, '#34e89e');
-      g.addColorStop(0, 'hsl( 120, 100%, 50% )');
-      return g;
-    })()
-  };
+      const g = visualContext.createLinearGradient(0, barHeight, 0, 0)
 
-  const frequencyUpper = audioContext.sampleRate / 2;
-  const frequencyLimit = Math.min(16e3, frequencyUpper);
+      g.addColorStop(1, '#0f3443')
+      g.addColorStop(0.5, '#34e89e')
+      g.addColorStop(0, 'hsl( 120, 100%, 50% )')
+      return g
+    })()
+  }
+
+  const frequencyUpper = audioContext.sampleRate / 2
+  const frequencyLimit = Math.min(16e3, frequencyUpper)
+
+  canvasOptions = {
+    innerHeight: innerHeight,
+    innerWidth: innerWidth,
+    capHeight: capHeight,
+    barWidth: barWidth,
+    barHeight: barHeight,
+    barSpacing: barSpacing,
+    nOfBars: nOfBars,
+    styles: styles,
+    frequencyUpper: frequencyUpper,
+    frequencyLimit: frequencyLimit
+  }
+}
+
+/**
+ * Draws new frame of spectrum visualization.
+ */
+function renderFrame() {
+  if (canvasOptions === undefined)
+    initializeOptions()
+
+  const ctx = visualContext
+  const opts = canvasOptions
+
+  ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
+
+  const frequencyData = new Uint8Array(analyser.frequencyBinCount)
 
   const step =
-    (frequencyData.length * (frequencyLimit / frequencyUpper) - 1)
-    / (nOfBars - 1);
+    (frequencyData.length * (opts.frequencyLimit / opts.frequencyUpper) - 1)
+    / (opts.nOfBars - 1)
 
-  for (let i = 0; i < nOfBars; i++) {
-    const value = frequencyData[Math.floor(i * step)] / 255;
-    const xPosition = barSpacing * (i + 0.5);
+  analyser.getByteFrequencyData(frequencyData)
 
-    if ((xPosition + barWidth) < innerWidth) {
-      ctx.fillStyle = styles.gradient;
+  for (let i = 0; i < opts.nOfBars; i++) {
+    const value = frequencyData[Math.floor(i * step)] / 255
+    const xPosition = opts.barSpacing * (i + 0.5)
+
+    if ((xPosition + opts.barWidth) < opts.innerWidth) {
+      ctx.fillStyle = opts.styles.gradient
+
       ctx.fillRect(
         xPosition,
-        barHeight * (1 - value) + capHeight,
-        barWidth,
-        barHeight * value
-      );
+        opts.barHeight * (1 - value) + opts.capHeight,
+        opts.barWidth,
+        opts.barHeight * value
+      )
 
-      ctx.fillStyle = styles.capStyle;
+      ctx.fillStyle = opts.styles.capStyle
+
       ctx.fillRect(
         xPosition,
-        barHeight * (1 - value),
-        barWidth,
-        capHeight
-      );
+        opts.barHeight * (1 - value),
+        opts.barWidth,
+        opts.capHeight
+      )
     }
   }
 
   if (!player.paused && !player.muted) {
     requestAnimationFrame(renderFrame)
   } else {
-    ctx.clearRect(0, 0, innerWidth, innerHeight)
+    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
-    for (let i = 0; i < nOfBars; i++) {
-      const xPosition = barSpacing * (i + 0.5)
+    for (let i = 0; i < opts.nOfBars; i++) {
+      const xPosition = opts.barSpacing * (i + 0.5)
 
-      if ((xPosition + barWidth) < innerWidth) {
-        ctx.fillStyle = styles.capStyle;
+      if ((xPosition + opts.barWidth) < opts.innerWidth) {
+        ctx.fillStyle = opts.styles.capStyle
+
         ctx.fillRect(
           xPosition,
-          barHeight,
-          barWidth,
-          capHeight
-        );
+          opts.barHeight,
+          opts.barWidth,
+          opts.capHeight
+        )
       }
     }
   }
@@ -323,10 +352,10 @@ async function requestSongs() {
  * Based on response from S3 performs parsing and serialization of songs' data.
  */
 async function loadSongs() {
-  let response = await (await requestSongs()).text()
-  let xml = new window.DOMParser().parseFromString(response, 'text/xml')
+  const response = await (await requestSongs()).text()
+  const xml = new window.DOMParser().parseFromString(response, 'text/xml')
 
-  let songs =
+  const songs =
     Array.from(xml.querySelectorAll('Contents'))
       .map(entry => entry.textContent)
       .map(info => info.split('.mp3')[0] + '.mp3')
@@ -335,12 +364,28 @@ async function loadSongs() {
 }
 
 /**
+ * Increment current song index.
+ */
+function incrementSong() {
+  currentSong += 1
+  firstFromLast()
+}
+
+/**
+ * Decrement current song index.
+ */
+function decrementSong() {
+  currentSong -= 1
+  lastFromFirst()
+}
+
+/**
  * Switches to the next song if the previous has ended.
  */
 function nextSongOnEnd() {
-  currentSong += 1
-  firstFromLast()
+  incrementSong()
   updateTitle()
+
   player.src = link(songList[currentSong])
   player.play()
 }
@@ -349,28 +394,28 @@ function nextSongOnEnd() {
  * Updates displayed current time.
  */
 function changeTime() {
-  player.currentTime = player.duration / 100 * position.value;
+  player.currentTime = player.duration / 100 * position.value
 
-  updateDisplayedTime();
-};
+  updateDisplayedTime()
+}
 
 /**
  * Moves slider according to current time.
  */
 function moveSlider() {
   if (player.currentTime == 0)
-    position.value = 1;
+    position.value = 1
   else
-    position.value = (player.currentTime * 100 / player.duration);
+    position.value = (player.currentTime * 100 / player.duration)
 
-  updateDisplayedTime();
+  updateDisplayedTime()
 }
 
 /**
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
-  player.volume = document.getElementsByClassName('volume-regulator')[0].value;
+  player.volume = document.getElementsByClassName('volume-regulator')[0].value
 }
 
 /**
@@ -378,11 +423,11 @@ function changeVolume() {
  */
 function toggleMute() {
   if (!player.muted) {
-    player.muted = true;
-    volumeBut.src = "res/mute.png";
+    player.muted = true
+    volumeBut.src = "res/mute.png"
   } else {
-    player.muted = false;
-    volumeBut.src = "res/volume.png";
+    player.muted = false
+    volumeBut.src = "res/volume.png"
   }
 }
 
@@ -390,31 +435,27 @@ function toggleMute() {
  * The boot and the listeners' logic.
  */
 window.onload = function () {
-  initLoader();
+  initLoader()
 
-  loadSongs();
+  loadSongs()
 
-  player.addEventListener("ended", nextSongOnEnd);
-  position.addEventListener('input', changeTime);
-  player.addEventListener("timeupdate", moveSlider);
-  document.getElementsByClassName('volume-regulator')[0].addEventListener("input", changeVolume);
-  volumeBut.addEventListener("click", toggleMute);
+  player.addEventListener("ended", nextSongOnEnd)
+  position.addEventListener('input', changeTime)
+  player.addEventListener("timeupdate", moveSlider)
+  document.getElementsByClassName('volume-regulator')[0].addEventListener("input", changeVolume)
+  volumeBut.addEventListener("click", toggleMute)
 
-  navigator.mediaSession.setActionHandler('previoustrack', () => {
-    previousSong();
-  });
+  navigator.mediaSession.setActionHandler('previoustrack', () => previousSong())
 
-  navigator.mediaSession.setActionHandler('nexttrack', () => {
-    nextSong();
-  });
+  navigator.mediaSession.setActionHandler('nexttrack', () => nextSong())
 
   navigator.mediaSession.setActionHandler('pause', () => {
-    toggleMusic();
-    navigator.mediaSession.playbackState = 'paused';
-  });
+    toggleMusic()
+    navigator.mediaSession.playbackState = 'paused'
+  })
 
   navigator.mediaSession.setActionHandler('play', () => {
-    toggleMusic();
-    navigator.mediaSession.playbackState = 'playing';
-  });
+    toggleMusic()
+    navigator.mediaSession.playbackState = 'playing'
+  })
 }
