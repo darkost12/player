@@ -10,10 +10,12 @@ const spinner = document.getElementsByClassName('load-spinner')[0]              
 const toggleBut = document.getElementsByClassName('toggle-button')[0]                             //The link to the <img> element.
 const volumeBut = document.getElementsByClassName('volume-button')[0]                             //The link to the <img> element.
 const position = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
+const volumePosition = document.getElementsByClassName('volume-regulator')[0]                     //The link to the <input type="range"> element.
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
+let mutedAt                                                                                       //Volume on which the mute was toggled.
 
 const titleReplaces = [                                                                           //List of title transitions.
   { from: '.mp3', to: '' },
@@ -30,7 +32,7 @@ window.AudioContext =                                                           
 function shuffleMusic(songs) {
   player.currentTime = 0
   navigator.mediaSession.playbackState = 'paused'
-  toggleBut.src = "res/play.png"
+  toggleBut.src = 'res/play.png'
   songList = songs
 
   let ctr = songs.length,                                                                         //Fisher-Yates shuffle algorithm
@@ -68,29 +70,30 @@ function showFirst() {
  * Shows loader spinner at the very beginning.
  */
 function initLoader() {
-  overlay.style.display = "block"
-  spinner.style.display = "block"
+  overlay.style.display = 'block'
+  spinner.style.display = 'block'
 }
 
 /**
  * Disables shadowing of background and loader spinner.
  */
 function disableLoader() {
-  overlay.style.display = "none"
-  spinner.style.display = "none"
+  overlay.style.display = 'none'
+  spinner.style.display = 'none'
 }
 
 /**
  * Updates session data on changing of song.
  * @param {string} title. Song[i].Key (title of song).
  */
-function updateMetadata(title) {
+function updateMetadata(title, year) {
   if ('mediaSession' in navigator)
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artwork: [
         { src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg', sizes: '320x240', type: 'image/png' },
-      ]
+      ],
+      album: year                                                                                  //Put year in album field cause there are no such field sadly
     })
 }
 
@@ -107,10 +110,12 @@ function prepareTitle(title) {
  * Updates title of song on switch. Also removes extension from the title.
  */
 function updateTitle() {
-  const title = prepareTitle(songList[currentSong])
+  const preparedTitleWithYear = prepareTitle(songList[currentSong])
+
+  const [title, possibleYear] = preparedTitleWithYear.split(/(\d{4})$/).map(v => v ? v.trim() : v)
 
   songName.innerHTML = title
-  updateMetadata(title)
+  updateMetadata(title, possibleYear)
 }
 
 /**
@@ -138,12 +143,12 @@ function toggleMusic() {
     openContext()
 
     navigator.mediaSession.playbackState = 'playing'
-    toggleBut.src = "res/pause.png"
+    toggleBut.src = 'res/pause.png'
   } else if (player.src != '' && !player.paused) {
     player.pause()
 
     navigator.mediaSession.playbackState = 'paused'
-    toggleBut.src = "res/play.png"
+    toggleBut.src = 'res/play.png'
   }
 }
 
@@ -175,12 +180,12 @@ function previousSong() {
 }
 
 /**
- * Gets signed link via GET request using "Key" parameter.
+ * Gets signed link via GET request using 'Key' parameter.
  * @param {string} title. Song[i].Key (title of song).
  * @return {string} url. Signed url for audio.src.
  */
 function link(title) {
-  return "https://public-music-storage.s3.amazonaws.com/" + title
+  return 'https://public-music-storage.s3.amazonaws.com/' + title
 }
 
 /**
@@ -415,7 +420,11 @@ function moveSlider() {
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
-  player.volume = document.getElementsByClassName('volume-regulator')[0].value
+  const volume = volumePosition.value
+
+  player.volume = volume
+
+  updateVolumeIcon()
 }
 
 /**
@@ -423,11 +432,28 @@ function changeVolume() {
  */
 function toggleMute() {
   if (!player.muted) {
+    mutedAt = player.volume
     player.muted = true
-    volumeBut.src = "res/mute.png"
+    volumePosition.value = 0
+    updateVolumeIcon()
   } else {
     player.muted = false
-    volumeBut.src = "res/volume.png"
+    console.log(mutedAt)
+    player.volume = mutedAt
+    volumePosition.value = mutedAt
+    updateVolumeIcon()
+    openContext()
+  }
+}
+
+/**
+ * Updates volume icon based on slider value.
+ */
+function updateVolumeIcon() {
+  if (volumePosition.value == 0) {
+    volumeBut.src = 'res/mute.png'
+  } else {
+    volumeBut.src = 'res/volume.png'
   }
 }
 
@@ -439,11 +465,11 @@ window.onload = function () {
 
   loadSongs()
 
-  player.addEventListener("ended", nextSongOnEnd)
+  player.addEventListener('ended', nextSongOnEnd)
   position.addEventListener('input', changeTime)
-  player.addEventListener("timeupdate", moveSlider)
-  document.getElementsByClassName('volume-regulator')[0].addEventListener("input", changeVolume)
-  volumeBut.addEventListener("click", toggleMute)
+  player.addEventListener('timeupdate', moveSlider)
+  volumeBut.addEventListener('click', toggleMute)
+  volumePosition.addEventListener('input', changeVolume)
 
   navigator.mediaSession.setActionHandler('previoustrack', () => previousSong())
 

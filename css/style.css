@@ -1,6 +1,6 @@
 .buttons {
   width: 40px;
-  height:40px;
+  height: 40px;
 }
 
 .buttons:focus {
@@ -8,15 +8,15 @@
 }
 
 body {
-  padding:0px;
-  margin:0px;
+  padding: 0px;
+  margin: 0px;
   top: 0;
-  right:0;
+  right: 0;
   bottom: 0;
   left: 0;
-  width:100%;
-  height:calc(100%);
-  background-image:linear-gradient(90deg, #2196f3, #f64f59);
+  width: 100%;
+  height: calc(100%);
+  background-image: linear-gradient(90deg, #2196f3, #f64f59);
 }
 
 .next-button {
@@ -28,16 +28,16 @@ body {
 }
 
 .button-round {
-  width:60px;
-  height:60px;
-  border-radius:100%;
+  width: 60px;
+  height: 60px;
+  border-radius: 100%;
   margin: 0 auto;
   vertical-align: middle;
   align-content: center;
 }
 
 .button-round:focus {
-  outline:none;
+  outline: none;
 }
 
 .music-player {
@@ -45,13 +45,13 @@ body {
 }
 
 .control-panel {
-  padding-top:10px;
+  padding-top: 10px;
   text-align: center;
-  height:5vh;
+  height: 5vh;
 }
 
 .content {
-  max-height:75vh;
+  max-height: 75vh;
   min-height: 63vh;
   display: flex;
   margin-bottom: 5vh;
@@ -62,18 +62,17 @@ nav {
 }
 
 .overlay {
-  height:100%;
-  width:100%;
+  height: 100%;
+  width: 100%;
   display: none;
   position: fixed;
   padding-top: 40vh;
-  background-image:linear-gradient(90deg, #2a0845, #6441a5);
+  background-image: linear-gradient(90deg, #2a0845, #6441a5);
   opacity: 0.9;
 }
 
 .load-spinner {
-  margin:0 auto;
-  display:none;
+  margin: 0 auto;
   -webkit-animation: rotation 1s infinite linear;
 }
 
@@ -87,20 +86,20 @@ nav {
 
 .song-name {
   text-align: center;
-  display:none;
+  display: none;
   font-family: 'venus';
 }
 
 @font-face {
-  font-family: "venus";
-  src: url("../res/venus.ttf");
+  font-family: 'venus';
+  src: url('../res/venus.ttf');
 }
 
 .name-holder {
   align-items: center;
-  display:flex;
+  display: flex;
   justify-content: center;
-  height:30px;
+  height: 30px;
 }
 
 .slider-container {
@@ -143,18 +142,15 @@ nav {
   display: inline-block;
   text-align: right;
   padding-left: 1vw;
-  font-family: "venus";
+  font-family: 'venus';
 
   font-size:15px;
 }
 
 .volume-button {
-  margin-left:1vw;
-  width:15px;
-  text-align:left;
-  position: absolute;
+  margin-left: 1vw;
+  width: 15px;
   vertical-align: middle;
-  display:inline-block;
 }
 
 .volume-settings:hover .volume-regulator {
@@ -167,20 +163,25 @@ nav {
 }
 
 .volume-regulator {
-  margin-left:-15px;
-   opacity: 0;
-  display: inline-block;
+  opacity: 0;
   -webkit-appearance: none;
   visibility: visible;
-  align-content: top;
-  transform: rotate(270deg);
+  position: absolute;
   height: 10px;
+  -webkit-transform-origin: -7.5px 5px;
+  -moz-transform-origin: -7.5px 5px;
+  -ms-transform-origin: -7.5px 5px;
+  transform-origin: -7.5px 5px;
+  -webkit-transform: rotate(-90deg);
+  -moz-transform: rotate(-90deg);
+  -ms-transform: rotate(-90deg);
+  transform: rotate(-90deg);
   border-radius: 5px;
   background: #d3d3d3;
+  margin-top: -3px;
   outline: none;
   -webkit-transition: .2s;
   transition: opacity .2s;
-
 }
 
 .volume-regulator:hover {
@@ -198,14 +199,14 @@ nav {
 }
 
 .volume-settings {
-  padding-left:3vw;
+  padding-left: 3vw;
   width: 11vw;
   display: inline-block;
 }
 
 .canvas {
-  width:95%;
-  height:100%;
+  width: 85%;
+  height: 100%;
   align-content: center;
   margin: 0 auto;
   opacity: 0.8;
@@ -213,8 +214,8 @@ nav {
 
 .chart {
   margin: 0 auto;
-  margin-top:3vh;
-  bottom:3vh;
+  margin-top: 3vh;
+  bottom: 3vh;
   text-align: center;
   width: 100%;
 }
