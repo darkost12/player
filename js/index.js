@@ -1,7 +1,6 @@
 /**
  * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
  */
-const bucket = 'https://public-music-storage.s3.amazonaws.com/'                                   //AWS S3 bucket, that contains music.
 const overlay = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
 const songName = document.getElementsByClassName('song-name')[0]                                  //The link to the <h>/<h> element.
 const player = document.getElementsByClassName('music-player')[0]                                 //The link to the <audio> element in HTML code.
@@ -11,6 +10,7 @@ const toggleBut = document.getElementsByClassName('toggle-button')[0]           
 const volumeBut = document.getElementsByClassName('volume-button')[0]                             //The link to the <img> element.
 const position = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
 const volumePosition = document.getElementsByClassName('volume-regulator')[0]                     //The link to the <input type="range"> element.
+let s3 = undefined
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
@@ -180,15 +180,6 @@ function previousSong() {
 }
 
 /**
- * Gets signed link via GET request using 'Key' parameter.
- * @param {string} title. Song[i].Key (title of song).
- * @return {string} url. Signed url for audio.src.
- */
-function link(title) {
-  return 'https://public-music-storage.s3.amazonaws.com/' + title
-}
-
-/**
  * Based on current timing of audio component fill the text area left of position element.
  */
 function updateDisplayedTime() {
@@ -347,17 +338,44 @@ function renderFrame() {
 }
 
 /**
- * Performs request of songs from bucket.
+ * @returns {bool}. Whether bucket public or private
  */
-async function requestSongs() {
-  return await fetch(bucket)
+function isBucketPrivate() {
+  return (accessKey && secretKey)
 }
 
 /**
- * Based on response from S3 performs parsing and serialization of songs' data.
+ * Performs request of songs from bucket if it's open.
  */
-async function loadSongs() {
-  const response = await (await requestSongs()).text()
+async function requestSongsFromPublic() {
+  return await fetch('https://' + bucket + '.s3.amazonaws.com/')
+}
+
+/**
+ * Gets signed or direct link via GET request using 'Key' parameter.
+ * @param {string} title. Song[i].Key (title of song).
+ * @return {string} url. Signed url for audio.src.
+ */
+function link(title) {
+  if (isBucketPrivate()) {
+    const url = s3.getSignedUrl('getObject', {
+      Bucket: bucket,
+      Key: title,
+      Expires: 1800
+    })
+
+    return url
+  } else {
+    return 'https://' + bucket + '.s3.amazonaws.com/' + title
+  }
+}
+
+
+/**
+ * Simple fetches songs' data if bucket is public.
+ */
+async function loadSongsFromPublic() {
+  const response = await (await requestSongsFromPublic()).text()
   const xml = new window.DOMParser().parseFromString(response, 'text/xml')
 
   const songs =
@@ -368,6 +386,24 @@ async function loadSongs() {
   shuffleMusic(songs)
 }
 
+/**
+ * Based on response from S3 performs parsing and serialization of songs' data if bucket is private.
+ */
+function loadSongsFromPrivate() {
+  s3 = new AWS.S3()
+
+  let receivedSongs = []
+
+  s3.listObjects({ Bucket: bucket }, function (err, data) {
+    if (err)
+      console.log(err, err.stack);
+    else {
+      data.Contents.forEach(song => receivedSongs.push(song.Key))
+
+      shuffleMusic(receivedSongs);
+    }
+  })
+}
 /**
  * Increment current song index.
  */
@@ -438,7 +474,6 @@ function toggleMute() {
     updateVolumeIcon()
   } else {
     player.muted = false
-    console.log(mutedAt)
     player.volume = mutedAt
     volumePosition.value = mutedAt
     updateVolumeIcon()
@@ -463,7 +498,16 @@ function updateVolumeIcon() {
 window.onload = function () {
   initLoader()
 
-  loadSongs()
+  if (isBucketPrivate()) {
+    AWS.config.update({
+      accessKeyId: accessKey,
+      secretAccessKey: secretKey
+    })
+
+    loadSongsFromPrivate()
+  } else {
+    loadSongsFromPublic()
+  }
 
   player.addEventListener('ended', nextSongOnEnd)
   position.addEventListener('input', changeTime)
