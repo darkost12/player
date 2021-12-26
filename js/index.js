@@ -86,15 +86,23 @@ function disableLoader() {
  * Updates session data on changing of song.
  * @param {string} title. Song[i].Key (title of song).
  */
-function updateMetadata(title, year) {
-  if ('mediaSession' in navigator)
+function updateMetadata(fullTitle, year) {
+  if ('mediaSession' in navigator) {
+    let captureGroups = fullTitle.split(/\s-\s/)
+
     navigator.mediaSession.metadata = new MediaMetadata({
-      title,
+      artist: captureGroups[0],
+      title: captureGroups[1],
       artwork: [
-        { src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg', sizes: '320x240', type: 'image/png' },
+        {
+          src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg',
+          sizes: '320x240',
+          type: 'image/png'
+        },
       ],
-      album: year                                                                                  //Put year in album field cause there are no such field sadly
+      album: year                                                                                  //Put year in album field cause there is no such field sadly
     })
+  }
 }
 
 /**
@@ -112,10 +120,10 @@ function prepareTitle(title) {
 function updateTitle() {
   const preparedTitleWithYear = prepareTitle(songList[currentSong])
 
-  const [title, possibleYear] = preparedTitleWithYear.split(/(\d{4})$/).map(v => v ? v.trim() : v)
+  const [fullTitle, possibleYear] = preparedTitleWithYear.split(/(\d{4})$/).map(v => v ? v.trim() : v)
 
-  songName.innerHTML = title
-  updateMetadata(title, possibleYear)
+  songName.innerHTML = fullTitle
+  updateMetadata(fullTitle, possibleYear)
 }
 
 /**
