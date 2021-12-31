@@ -98,7 +98,11 @@ function updateMetadata(fullTitle, year) {
           src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg',
           sizes: '320x240',
           type: 'image/png'
-        },
+        }, {
+          src: 'https://i1.wp.com/edgeeffects.net/wp-content/uploads/2021/03/The_Earth_seen_from_Apollo_17.jpg?ssl=1',
+          sizes: '512x512',
+          type: 'image/png'
+        }
       ],
       album: year                                                                                  //Put year in album field cause there is no such field sadly
     })
@@ -165,10 +169,12 @@ function toggleMusic() {
  */
 function changeSong() {
   player.src = link(songList[currentSong])
-  openContext()
-  navigator.mediaSession.playbackState = 'paused'
-  toggleMusic()
-  updateTitle()
+  player.oncanplay = () => {
+    openContext()
+    navigator.mediaSession.playbackState = 'paused'
+    toggleMusic()
+    updateTitle()
+  }
 }
 
 /**
@@ -211,6 +217,14 @@ function setupVisualContext(canvas) {
   ctx.scale(dpr, dpr)
 
   visualContext = ctx
+}
+
+/**
+ * Called if window was resized to tweak the params to get rid of possible blurriness.
+ */
+function updateCanvasParameters() {
+  setupVisualContext(canvas)
+  initializeOptions()
 }
 
 /**
@@ -522,6 +536,7 @@ window.onload = function () {
   player.addEventListener('timeupdate', moveSlider)
   volumeBut.addEventListener('click', toggleMute)
   volumePosition.addEventListener('input', changeVolume)
+  window.addEventListener('resize', updateCanvasParameters)
 
   navigator.mediaSession.setActionHandler('previoustrack', () => previousSong())
 
