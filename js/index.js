@@ -168,11 +168,12 @@ function toggleMusic() {
  * Updates song on changing of index.
  */
 function changeSong() {
+  navigator.mediaSession.playbackState = 'paused'
   player.src = link(songList[currentSong])
   player.oncanplay = () => {
+    player.play()
     openContext()
-    navigator.mediaSession.playbackState = 'paused'
-    toggleMusic()
+    navigator.mediaSession.playbackState = 'playing'
     updateTitle()
   }
 }
@@ -391,7 +392,6 @@ function link(title) {
     return 'https://' + bucket + '.s3.amazonaws.com/' + title
   }
 }
-
 
 /**
  * Simple fetches songs' data if bucket is public.
