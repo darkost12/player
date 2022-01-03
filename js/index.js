@@ -32,7 +32,6 @@ window.AudioContext =                                                           
 function shuffleMusic(songs) {
   player.currentTime = 0
   navigator.mediaSession.playbackState = 'paused'
-  toggleBut.src = 'res/play.png'
   songList = songs
 
   let ctr = songs.length,                                                                         //Fisher-Yates shuffle algorithm
@@ -131,19 +130,14 @@ function updateTitle() {
 }
 
 /**
- * Handles song index when switching from last song in list to the first.
+ * Handles song index when switching from last song in list to the first and vice versa.
  */
-function firstFromLast() {
-  if (currentSong > (songList.length - 1))
+function firstAndLast() {
+  if (currentSong > (songList.length - 1)) {
     currentSong = 0
-}
-
-/**
- * Handles song index when switching from the first in list to last.
- */
-function lastFromFirst() {
-  if (currentSong < 0)
+  } else if (currentSong < 0) {
     currentSong = songList.length - 1
+  }
 }
 
 /**
@@ -155,12 +149,10 @@ function toggleMusic() {
     openContext()
 
     navigator.mediaSession.playbackState = 'playing'
-    toggleBut.src = 'res/pause.png'
   } else if (player.src != '' && !player.paused) {
     player.pause()
 
     navigator.mediaSession.playbackState = 'paused'
-    toggleBut.src = 'res/play.png'
   }
 }
 
@@ -170,6 +162,7 @@ function toggleMusic() {
 function changeSong() {
   navigator.mediaSession.playbackState = 'paused'
   player.src = link(songList[currentSong])
+
   player.oncanplay = () => {
     player.play()
     openContext()
@@ -209,7 +202,7 @@ function updateDisplayedTime() {
  * @param {canvas object} canvas.
  * @return {canvas_context} ctx.
  */
-function setupVisualContext(canvas) {
+function setupVisualContext() {
   dpr = window.devicePixelRatio || 1
   const rect = canvas.getBoundingClientRect()
   canvas.width = rect.width * dpr
@@ -224,7 +217,7 @@ function setupVisualContext(canvas) {
  * Called if window was resized to tweak the params to get rid of possible blurriness.
  */
 function updateCanvasParameters() {
-  setupVisualContext(canvas)
+  setupVisualContext()
   initializeOptions()
 }
 
@@ -246,7 +239,7 @@ function openContext() {
 
     if (!visualContext) {
       canvas = document.getElementsByClassName('canvas')[0]
-      setupVisualContext(canvas)
+      setupVisualContext()
     }
   }
 
@@ -431,7 +424,7 @@ function loadSongsFromPrivate() {
  */
 function incrementSong() {
   currentSong += 1
-  firstFromLast()
+  firstAndLast()
 }
 
 /**
@@ -439,7 +432,7 @@ function incrementSong() {
  */
 function decrementSong() {
   currentSong -= 1
-  lastFromFirst()
+  firstAndLast()
 }
 
 /**
@@ -458,18 +451,17 @@ function nextSongOnEnd() {
  */
 function changeTime() {
   player.currentTime = player.duration / 100 * position.value
-
-  updateDisplayedTime()
 }
 
 /**
  * Moves slider according to current time.
  */
 function moveSlider() {
-  if (player.currentTime == 0)
+  if (player.currentTime == 0) {
     position.value = 1
-  else
+  } else {
     position.value = (player.currentTime * 100 / player.duration)
+  }
 
   updateDisplayedTime()
 }
@@ -482,7 +474,11 @@ function changeVolume() {
 
   player.volume = volume
 
-  updateVolumeIcon()
+  if (volume == 0) {
+    volumeBut.src = 'res/mute.png'
+  } else {
+    volumeBut.src = 'res/volume.png'
+  }
 }
 
 /**
@@ -493,24 +489,22 @@ function toggleMute() {
     mutedAt = player.volume
     player.muted = true
     volumePosition.value = 0
-    updateVolumeIcon()
   } else {
     player.muted = false
     player.volume = mutedAt
     volumePosition.value = mutedAt
-    updateVolumeIcon()
     openContext()
   }
 }
 
 /**
- * Updates volume icon based on slider value.
+ * Updates play/pause icon based on slider value.
  */
-function updateVolumeIcon() {
-  if (volumePosition.value == 0) {
-    volumeBut.src = 'res/mute.png'
+function updatePlayIcon() {
+  if (player.paused) {
+    toggleBut.src = 'res/play.png'
   } else {
-    volumeBut.src = 'res/volume.png'
+    toggleBut.src = 'res/pause.png'
   }
 }
 
@@ -531,24 +525,18 @@ window.onload = function () {
     loadSongsFromPublic()
   }
 
-  player.addEventListener('ended', nextSongOnEnd)
-  position.addEventListener('input', changeTime)
-  player.addEventListener('timeupdate', moveSlider)
-  volumeBut.addEventListener('click', toggleMute)
-  volumePosition.addEventListener('input', changeVolume)
   window.addEventListener('resize', updateCanvasParameters)
 
-  navigator.mediaSession.setActionHandler('previoustrack', () => previousSong())
+  player.addEventListener('ended', nextSongOnEnd)
+  player.addEventListener('timeupdate', moveSlider)
+  player.addEventListener('play', updatePlayIcon)
+  player.addEventListener('pause', updatePlayIcon)
+  position.addEventListener('input', changeTime)
+  volumeBut.addEventListener('click', toggleMute)
+  volumePosition.addEventListener('input', changeVolume)
 
-  navigator.mediaSession.setActionHandler('nexttrack', () => nextSong())
-
-  navigator.mediaSession.setActionHandler('pause', () => {
-    toggleMusic()
-    navigator.mediaSession.playbackState = 'paused'
-  })
-
-  navigator.mediaSession.setActionHandler('play', () => {
-    toggleMusic()
-    navigator.mediaSession.playbackState = 'playing'
-  })
+  navigator.mediaSession.setActionHandler('previoustrack', previousSong)
+  navigator.mediaSession.setActionHandler('nexttrack', nextSong)
+  navigator.mediaSession.setActionHandler('pause', toggleMusic)
+  navigator.mediaSession.setActionHandler('play', toggleMusic)
 }
