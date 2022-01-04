@@ -361,13 +361,6 @@ function isBucketPrivate() {
 }
 
 /**
- * Performs request of songs from bucket if it's open.
- */
-async function requestSongsFromPublic() {
-  return await fetch('https://' + bucket + '.s3.amazonaws.com/')
-}
-
-/**
  * Gets signed or direct link via GET request using 'Key' parameter.
  * @param {string} title. Song[i].Key (title of song).
  * @return {string} url. Signed url for audio.src.
@@ -387,37 +380,32 @@ function link(title) {
 }
 
 /**
- * Simple fetches songs' data if bucket is public.
+ * Requests songs' data from bucket.
  */
-async function loadSongsFromPublic() {
-  const response = await (await requestSongsFromPublic()).text()
-  const xml = new window.DOMParser().parseFromString(response, 'text/xml')
-
-  const songs =
-    Array.from(xml.querySelectorAll('Contents'))
-      .map(entry => entry.textContent)
-      .map(info => info.split('.mp3')[0] + '.mp3')
-
-  shuffleMusic(songs)
-}
-
-/**
- * Based on response from S3 performs parsing and serialization of songs' data if bucket is private.
- */
-function loadSongsFromPrivate() {
+function requestSongs() {
   s3 = new AWS.S3()
 
   let receivedSongs = []
 
-  s3.listObjects({ Bucket: bucket }, function (err, data) {
-    if (err)
-      console.log(err, err.stack);
-    else {
-      data.Contents.forEach(song => receivedSongs.push(song.Key))
+  const [params, callback] =
+    [
+      { Bucket: bucket },
+      (err, data) => {
+        if (err)
+          console.log(err, err.stack)
+        else {
+          data.Contents.forEach(song => receivedSongs.push(song.Key))
 
-      shuffleMusic(receivedSongs);
-    }
-  })
+          shuffleMusic(receivedSongs)
+        }
+      }
+    ]
+
+  if (isBucketPrivate()) {
+    s3.listObjects(params, callback)
+  } else {
+    s3.makeUnauthenticatedRequest('listObjects', params, callback)
+  }
 }
 /**
  * Increment current song index.
@@ -514,16 +502,12 @@ function updatePlayIcon() {
 window.onload = function () {
   initLoader()
 
-  if (isBucketPrivate()) {
-    AWS.config.update({
-      accessKeyId: accessKey,
-      secretAccessKey: secretKey
-    })
+  AWS.config.update({
+    accessKeyId: accessKey,
+    secretAccessKey: secretKey
+  })
 
-    loadSongsFromPrivate()
-  } else {
-    loadSongsFromPublic()
-  }
+  requestSongs()
 
   window.addEventListener('resize', updateCanvasParameters)
 
