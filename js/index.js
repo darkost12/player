@@ -1,5 +1,5 @@
 /**
- * Gets songs from AWS S3 through REST API and puts in the custom WEB-player.
+ * Gets songs from Yandex Object Storage through REST API and puts in the custom WEB-player.
  */
 const overlay = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
 const songName = document.getElementsByClassName('song-name')[0]                                  //The link to the <h>/<h> element.
@@ -22,12 +22,14 @@ const titleReplaces = [                                                         
   { from: 'AC_DC', to: 'AC/DC' }
 ]
 
+const subpath = 'music/'
+
 window.AudioContext =                                                                             //Automatic detection of webkit.
   window.AudioContext || window.webkitAudioContext || window.mozAudioContext
 
 /**
  * Shuffles music after getting through API call.
- * @param {string[]} songs. Array of songs' names received from AWS.
+ * @param {string[]} songs. Array of songs' names received from Yandex Object Storage.
  */
 function shuffleMusic(songs) {
   player.currentTime = 0
@@ -45,6 +47,7 @@ function shuffleMusic(songs) {
     songList[ctr] = songList[index]
     songList[index] = temp
   }
+
   currentSong = 0
 
   showFirst()
@@ -369,13 +372,13 @@ function link(title) {
   if (isBucketPrivate()) {
     const url = s3.getSignedUrl('getObject', {
       Bucket: bucket,
-      Key: title,
+      Key: subpath + title,
       Expires: 1800
     })
 
     return url
   } else {
-    return 'https://' + bucket + '.s3.amazonaws.com/' + title
+    return 'https://' + bucket + '.storage.yandexcloud.net/' + subpath + title
   }
 }
 
@@ -383,9 +386,13 @@ function link(title) {
  * Requests songs' data from bucket.
  */
 function requestSongs() {
-  s3 = new AWS.S3()
+  s3 = new AWS.S3({
+    endpoint: 'https://storage.yandexcloud.net',
+  })
 
   let receivedSongs = []
+
+  const subpathRegexp = new RegExp(subpath, 'g')
 
   const [params, callback] =
     [
@@ -394,9 +401,9 @@ function requestSongs() {
         if (err)
           console.log(err, err.stack)
         else {
-          data.Contents.forEach(song => receivedSongs.push(song.Key))
+          data.Contents.forEach(song => receivedSongs.push(song.Key.replace(subpathRegexp, '')))
 
-          shuffleMusic(receivedSongs)
+          shuffleMusic(receivedSongs.filter(k => k.includes('.mp3')))
         }
       }
     ]
