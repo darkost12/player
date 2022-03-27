@@ -461,6 +461,14 @@ function moveSlider() {
   updateDisplayedTime()
 }
 
+function updateMuteButtonIcon(volume) {
+  if (volume == 0) {
+    volumeBut.src = 'res/mute.png'
+  } else {
+    volumeBut.src = 'res/volume.png'
+  }
+}
+
 /**
  * Changes the volume according to the slider position.
  */
@@ -468,12 +476,7 @@ function changeVolume() {
   const volume = volumePosition.value
 
   player.volume = volume
-
-  if (volume == 0) {
-    volumeBut.src = 'res/mute.png'
-  } else {
-    volumeBut.src = 'res/volume.png'
-  }
+  updateMuteButtonIcon(volume)
 }
 
 /**
@@ -490,6 +493,7 @@ function toggleMute() {
     volumePosition.value = mutedAt
     openContext()
   }
+  updateMuteButtonIcon(volumePosition.value)
 }
 
 /**
