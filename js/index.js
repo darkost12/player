@@ -462,11 +462,7 @@ function moveSlider() {
 }
 
 function updateMuteButtonIcon(volume) {
-  if (volume == 0) {
-    volumeBut.src = 'res/mute.png'
-  } else {
-    volumeBut.src = 'res/volume.png'
-  }
+  volumeBut.src = (volume == 0) ? 'res/mute.png' : 'res/volume.png'
 }
 
 /**
