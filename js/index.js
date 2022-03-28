@@ -16,6 +16,7 @@ let currentSong                                                                 
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
 let mutedAt                                                                                       //Volume on which the mute was toggled.
+let cntRenderStopDelay = 0                                                                        //Frame counter for render's pause delay
 
 const titleReplaces = [                                                                           //List of title transitions.
   { from: '.mp3', to: '' },
@@ -237,7 +238,7 @@ function openContext() {
     analyser = audioContext.createAnalyser()
     audioSrc.connect(analyser)
     analyser.connect(audioContext.destination)
-    analyser.smoothingTimeConstant = 0.7
+    analyser.smoothingTimeConstant = 0.85
     analyser.fftSize = 512
 
     if (!visualContext) {
@@ -336,7 +337,17 @@ function renderFrame() {
 
   if (!player.paused && !player.muted) {
     requestAnimationFrame(renderFrame)
+    cntRenderStopDelay = 0
   } else {
+    if (cntRenderStopDelay++ < 50) {
+      requestAnimationFrame(renderFrame)
+    }
+    else {
+      clearFrame();
+    }
+  }
+
+  function clearFrame() {
     ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
     for (let i = 0; i < opts.nOfBars; i++) {
@@ -346,10 +357,10 @@ function renderFrame() {
         ctx.fillStyle = opts.styles.capStyle
 
         ctx.fillRect(
-          xPosition,
-          opts.barHeight,
-          opts.barWidth,
-          opts.capHeight
+            xPosition,
+            opts.barHeight,
+            opts.barWidth,
+            opts.capHeight
         )
       }
     }
