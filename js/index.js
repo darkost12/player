@@ -462,6 +462,14 @@ function moveSlider() {
 }
 
 /**
+ * Toggles the mute icon according to the volume.
+ * @param volume {number}. Current player's volume.
+ */
+function updateMuteButtonIcon(volume) {
+  volumeBut.src = (volume == 0) ? 'res/mute.png' : 'res/volume.png'
+}
+
+/**
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
@@ -469,11 +477,7 @@ function changeVolume() {
 
   player.volume = volume
 
-  if (volume == 0) {
-    volumeBut.src = 'res/mute.png'
-  } else {
-    volumeBut.src = 'res/volume.png'
-  }
+  updateMuteButtonIcon(volume)
 }
 
 /**
@@ -490,6 +494,8 @@ function toggleMute() {
     volumePosition.value = mutedAt
     openContext()
   }
+
+  updateMuteButtonIcon(volumePosition.value)
 }
 
 /**
