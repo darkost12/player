@@ -1,24 +1,24 @@
 /**
  * Gets songs from Yandex Object Storage through REST API and puts in the custom WEB-player.
  */
-const OVERLAY = document.getElementsByClassName('overlay')[0]                           //Shadowed loading overlay
-const SONG_NAME = document.getElementsByClassName('song-name')[0]                       //The link to the <h>/<h> element.
-const PLAYER = document.getElementsByClassName('music-player')[0]                       //The link to the <audio> element in HTML code.
-const TIMING = document.getElementsByClassName('current-time')[0]                       //The link to the <div> element.
-const SPINNER = document.getElementsByClassName('load-spinner')[0]                      //Spinner on loading overlay
-const TOGGLE_BUT = document.getElementsByClassName('toggle-button')[0]                  //The link to the <img> element.
-const VOLUME_BUT = document.getElementsByClassName('volume-button')[0]                  //The link to the <img> element.
-const POSITION = document.getElementsByClassName('current-position')[0]                 //The link to the <input type="range"> element.
-const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]          //The link to the <input type="range"> element.
-const NUM_FRAMES_TILL_RENDER_STOP = 50                                                            //The number of frames after which rendering will stop during pause and mute.
+const OVERLAY = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
+const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 //The link to the <h>/<h> element.
+const PLAYER = document.getElementsByClassName('music-player')[0]                                 //The link to the <audio> element in HTML code.
+const TIMING = document.getElementsByClassName('current-time')[0]                                 //The link to the <div> element.
+const SPINNER = document.getElementsByClassName('load-spinner')[0]                                //Spinner on loading overlay
+const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0]                         //The link to the <img> element.
+const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]                         //The link to the <img> element.
+const POSITION = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
+const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    //The link to the <input type="range"> element.
 const SPECTRUM_SMOOTHING_CONSTANT = 0.85                                                          //The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
+const STOP_RENDER_DELAY = 0.5                                                                     //The time in s during which the rendering will continue during pause or mute
 let s3 = undefined
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
 let mutedAt                                                                                       //Volume on which the mute was toggled.
-let cntFrames = 0                                                                                 //Frame counter used to implement render pause delay
+let stopTimestamp = 0                                                                             //Play stop or mute time.
 
 const titleReplaces = [                                                                           //List of title transitions.
   { from: '.mp3', to: '' },
@@ -296,6 +296,26 @@ function initializeOptions() {
  * Draws new frame of spectrum visualization.
  */
 function renderFrame() {
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
+
+    for (let i = 0; i < opts.nOfBars; i++) {
+      const xPosition = opts.barSpacing * (i + 0.5)
+
+      if ((xPosition + opts.barWidth) < opts.innerWidth) {
+        ctx.fillStyle = opts.styles.capStyle
+
+        ctx.fillRect(
+          xPosition,
+          opts.barHeight,
+          opts.barWidth,
+          opts.capHeight
+        )
+      }
+    }
+  }
+
   if (canvasOptions === undefined)
     initializeOptions()
 
@@ -339,32 +359,11 @@ function renderFrame() {
 
   if (!PLAYER.paused && !PLAYER.muted) {
     requestAnimationFrame(renderFrame)
-    cntFrames = 0
   } else {
-    if (cntFrames++ < NUM_FRAMES_TILL_RENDER_STOP) {
+    if (Date.now() - stopTimestamp < STOP_RENDER_DELAY * 1000) {
       requestAnimationFrame(renderFrame)
-    }
-    else {
-      clearFrame();
-    }
-  }
-
-  function clearFrame() {
-    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
-
-    for (let i = 0; i < opts.nOfBars; i++) {
-      const xPosition = opts.barSpacing * (i + 0.5)
-
-      if ((xPosition + opts.barWidth) < opts.innerWidth) {
-        ctx.fillStyle = opts.styles.capStyle
-
-        ctx.fillRect(
-            xPosition,
-            opts.barHeight,
-            opts.barWidth,
-            opts.capHeight
-        )
-      }
+    } else {
+      clearCanvas();
     }
   }
 }
@@ -479,25 +478,21 @@ function moveSlider() {
  * @param volume {number}. Current player's volume.
  */
 function updateMuteButtonIcon(volume) {
-  volumeBut.src = (volume == 0) ? 'res/mute.png' : 'res/volume.png'
+  VOLUME_BUTTON.src = (volume == 0) ? 'res/mute.png' : 'res/volume.png'
 }
 
 /**
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
-  const volume = VOLUME_POSITION.value
-
-  PLAYER.volume = volume
-
-  updateMuteButtonIcon(volume)
+  PLAYER.volume = VOLUME_POSITION.value
 }
 
 /**
  * Toggles mute on click.
  */
 function toggleMute() {
-  if (!PLAYER.muted) {
+  if (!PLAYER.muted && PLAYER.volume > 0) {
     mutedAt = PLAYER.volume
     PLAYER.muted = true
     VOLUME_POSITION.value = 0
@@ -507,19 +502,13 @@ function toggleMute() {
     VOLUME_POSITION.value = mutedAt
     openContext()
   }
-
-  updateMuteButtonIcon(volumePosition.value)
 }
 
 /**
  * Updates play/pause icon based on slider value.
  */
 function updatePlayIcon() {
-  if (PLAYER.paused) {
-    TOGGLE_BUT.src = 'res/play.png'
-  } else {
-    TOGGLE_BUT.src = 'res/pause.png'
-  }
+  TOGGLE_BUTTON.src = PLAYER.paused ? 'res/play.png' : 'res/pause.png'
 }
 
 /**
@@ -539,11 +528,32 @@ window.onload = function () {
 
   PLAYER.addEventListener('ended', nextSongOnEnd)
   PLAYER.addEventListener('timeupdate', moveSlider)
-  PLAYER.addEventListener('play', updatePlayIcon)
-  PLAYER.addEventListener('pause', updatePlayIcon)
   POSITION.addEventListener('input', changeTime)
-  VOLUME_BUT.addEventListener('click', toggleMute)
+  VOLUME_BUTTON.addEventListener('click', toggleMute)
   VOLUME_POSITION.addEventListener('input', changeVolume)
+  PLAYER.addEventListener('play', () => {
+    stopTimestamp = 0
+    updatePlayIcon()
+  })
+
+  PLAYER.addEventListener('pause', () => {
+    stopTimestamp = Date.now()
+
+    updatePlayIcon()
+  })
+
+  PLAYER.addEventListener('volumechange', () => {
+    stopTimestamp = VOLUME_POSITION.value > 0 ? 0 : Date.now()
+
+    updateMuteButtonIcon(VOLUME_POSITION.value)
+
+    if (VOLUME_POSITION.value == 0) {
+      PLAYER.muted = true
+    } else {
+      PLAYER.muted = false
+      openContext()
+    }
+  })
 
   navigator.mediaSession.setActionHandler('previoustrack', previousSong)
   navigator.mediaSession.setActionHandler('nexttrack', nextSong)
