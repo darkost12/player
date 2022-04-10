@@ -11,14 +11,14 @@ const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]       
 const POSITION = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
 const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    //The link to the <input type="range"> element.
 const SPECTRUM_SMOOTHING_CONSTANT = 0.85                                                          //The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
-const STOP_RENDER_DELAY = 0.5                                                                     //The time in s during which the rendering will continue during pause or mute
+const STOP_RENDER_DELAY = 0.7                                                                     //The time in seconds after which the rendering stops on pause or mute.
 let s3 = undefined
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
 let mutedAt                                                                                       //Volume on which the mute was toggled.
-let stopTimestamp = 0                                                                             //Play stop or mute time.
+let stopTimestamp = null                                                                          //Stop or mute time.
 
 const titleReplaces = [                                                                           //List of title transitions.
   { from: '.mp3', to: '' },
@@ -296,7 +296,6 @@ function initializeOptions() {
  * Draws new frame of spectrum visualization.
  */
 function renderFrame() {
-
   function clearCanvas() {
     ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
@@ -359,11 +358,12 @@ function renderFrame() {
 
   if (!PLAYER.paused && !PLAYER.muted) {
     requestAnimationFrame(renderFrame)
+    stopTimestamp = Date.now()
   } else {
     if (Date.now() - stopTimestamp < STOP_RENDER_DELAY * 1000) {
       requestAnimationFrame(renderFrame)
     } else {
-      clearCanvas();
+      clearCanvas()
     }
   }
 }
@@ -492,7 +492,7 @@ function changeVolume() {
  * Toggles mute on click.
  */
 function toggleMute() {
-  if (!PLAYER.muted && PLAYER.volume > 0) {
+  if (!PLAYER.muted) {
     mutedAt = PLAYER.volume
     PLAYER.muted = true
     VOLUME_POSITION.value = 0
@@ -528,23 +528,13 @@ window.onload = function () {
 
   PLAYER.addEventListener('ended', nextSongOnEnd)
   PLAYER.addEventListener('timeupdate', moveSlider)
+  PLAYER.addEventListener('play', updatePlayIcon)
+  PLAYER.addEventListener('pause', updatePlayIcon)
   POSITION.addEventListener('input', changeTime)
   VOLUME_BUTTON.addEventListener('click', toggleMute)
   VOLUME_POSITION.addEventListener('input', changeVolume)
-  PLAYER.addEventListener('play', () => {
-    stopTimestamp = 0
-    updatePlayIcon()
-  })
-
-  PLAYER.addEventListener('pause', () => {
-    stopTimestamp = Date.now()
-
-    updatePlayIcon()
-  })
 
   PLAYER.addEventListener('volumechange', () => {
-    stopTimestamp = VOLUME_POSITION.value > 0 ? 0 : Date.now()
-
     updateMuteButtonIcon(VOLUME_POSITION.value)
 
     if (VOLUME_POSITION.value == 0) {
