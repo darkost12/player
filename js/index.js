@@ -1,8 +1,8 @@
 /**
- * Gets songs from Yandex Object Storage through REST API and puts in the custom WEB-player.
+ * Gets songs from S3 Object Storage through REST API and puts in the custom WEB-player.
  */
 const OVERLAY = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
-const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 //The link to the <h>/<h> element.
+const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 //The link to the <h> element.
 const PLAYER = document.getElementsByClassName('music-player')[0]                                 //The link to the <audio> element in HTML code.
 const TIMING = document.getElementsByClassName('current-time')[0]                                 //The link to the <div> element.
 const SPINNER = document.getElementsByClassName('load-spinner')[0]                                //Spinner on loading overlay
@@ -10,14 +10,14 @@ const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0]       
 const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]                         //The link to the <img> element.
 const POSITION = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
 const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    //The link to the <input type="range"> element.
-const SPECTRUM_SMOOTHING_CONSTANT = 0.85                                                          //The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
-const STOP_RENDER_DELAY = 0.7                                                                     //The time in seconds after which the rendering stops on pause or mute.
+const SPECTRUM_SMOOTHING_CONSTANT = 0.75                                                          //The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
+const STOP_RENDER_DELAY = 0.5                                                                     //The time in seconds after which the rendering stops on pause or mute.
 let s3 = undefined
 let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
 let currentSong                                                                                   //The global identificator of currently playing song
 let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
-let mutedAt                                                                                       //Volume on which the mute was toggled.
+let lastVolume = 0.5                                                                              //Last non-zero volume of audio.
 let stopTimestamp = null                                                                          //Stop or mute time.
 
 const titleReplaces = [                                                                           //List of title transitions.
@@ -32,7 +32,7 @@ window.AudioContext =                                                           
 
 /**
  * Shuffles music after getting through API call.
- * @param {string[]} songs. Array of songs' names received from Yandex Object Storage.
+ * @param {string[]} songs. Array of songs' names received from Object Storage.
  */
 function shuffleMusic(songs) {
   PLAYER.currentTime = 0
@@ -356,15 +356,12 @@ function renderFrame() {
     }
   }
 
-  if (!PLAYER.paused && !PLAYER.muted) {
+  if (!PLAYER.paused && !PLAYER.muted && stopTimestamp !== null) {
     requestAnimationFrame(renderFrame)
-    stopTimestamp = Date.now()
+  } else if (!PLAYER.paused && !PLAYER.muted || Date.now() - stopTimestamp < STOP_RENDER_DELAY * 1000) {
+    requestAnimationFrame(renderFrame)
   } else {
-    if (Date.now() - stopTimestamp < STOP_RENDER_DELAY * 1000) {
-      requestAnimationFrame(renderFrame)
-    } else {
-      clearCanvas()
-    }
+    clearCanvas()
   }
 }
 
@@ -390,7 +387,7 @@ function link(title) {
 
     return url
   } else {
-    return 'https://' + bucket + '.storage.yandexcloud.net/' + subpath + title
+    return 'https://' + bucket + `.${endpoint}/` + subpath + title
   }
 }
 
@@ -399,7 +396,7 @@ function link(title) {
  */
 function requestSongs() {
   s3 = new AWS.S3({
-    endpoint: 'https://storage.yandexcloud.net',
+    endpoint: 'https://' + endpoint,
   })
 
   let receivedSongs = []
@@ -486,6 +483,7 @@ function updateMuteButtonIcon(volume) {
  */
 function changeVolume() {
   PLAYER.volume = VOLUME_POSITION.value
+  openContext()
 }
 
 /**
@@ -493,15 +491,16 @@ function changeVolume() {
  */
 function toggleMute() {
   if (!PLAYER.muted) {
-    mutedAt = PLAYER.volume
+    lastVolume = PLAYER.volume
     PLAYER.muted = true
     VOLUME_POSITION.value = 0
   } else {
     PLAYER.muted = false
-    PLAYER.volume = mutedAt
-    VOLUME_POSITION.value = mutedAt
-    openContext()
+    PLAYER.volume = lastVolume
+    VOLUME_POSITION.value = lastVolume
   }
+
+  openContext()
 }
 
 /**
@@ -523,13 +522,24 @@ window.onload = function () {
   })
 
   requestSongs()
+  PLAYER.volume = lastVolume
 
   window.addEventListener('resize', updateCanvasParameters)
 
   PLAYER.addEventListener('ended', nextSongOnEnd)
   PLAYER.addEventListener('timeupdate', moveSlider)
-  PLAYER.addEventListener('play', updatePlayIcon)
-  PLAYER.addEventListener('pause', updatePlayIcon)
+  PLAYER.addEventListener('play', () => {
+    stopTimestamp = null
+
+    updatePlayIcon()
+  })
+
+  PLAYER.addEventListener('pause', () => {
+    stopTimestamp = Date.now()
+
+    updatePlayIcon()
+  })
+
   POSITION.addEventListener('input', changeTime)
   VOLUME_BUTTON.addEventListener('click', toggleMute)
   VOLUME_POSITION.addEventListener('input', changeVolume)
@@ -541,8 +551,9 @@ window.onload = function () {
       PLAYER.muted = true
     } else {
       PLAYER.muted = false
-      openContext()
     }
+
+    stopTimestamp = PLAYER.muted || PLAYER.volume === 0 ? Date.now() : null
   })
 
   navigator.mediaSession.setActionHandler('previoustrack', previousSong)
