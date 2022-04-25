@@ -209,6 +209,7 @@ function updateDisplayedTime() {
  * @return {canvas_context} ctx.
  */
 function setupVisualContext() {
+  canvas = canvas || document.getElementsByClassName('canvas')[0]
   dpr = window.devicePixelRatio || 1
   const rect = canvas.getBoundingClientRect()
   canvas.width = rect.width * dpr
@@ -244,7 +245,6 @@ function openContext() {
     analyser.fftSize = 512
 
     if (!visualContext) {
-      canvas = document.getElementsByClassName('canvas')[0]
       setupVisualContext()
     }
   }
@@ -369,7 +369,7 @@ function renderFrame() {
  * @returns {bool}. Whether bucket public or private
  */
 function isBucketPrivate() {
-  return (accessKey && secretKey)
+  return (ACCESS_KEY && SECRET_KEY)
 }
 
 /**
@@ -380,14 +380,14 @@ function isBucketPrivate() {
 function link(title) {
   if (isBucketPrivate()) {
     const url = s3.getSignedUrl('getObject', {
-      Bucket: bucket,
+      Bucket: BUCKET,
       Key: subpath + title,
       Expires: 1800
     })
 
     return url
   } else {
-    return 'https://' + bucket + `.${endpoint}/` + subpath + title
+    return 'https://' + BUCKET + `.${ENDPOINT}/` + subpath + title
   }
 }
 
@@ -396,7 +396,7 @@ function link(title) {
  */
 function requestSongs() {
   s3 = new AWS.S3({
-    endpoint: 'https://' + endpoint,
+    endpoint: 'https://' + ENDPOINT,
   })
 
   let receivedSongs = []
@@ -405,7 +405,7 @@ function requestSongs() {
 
   const [params, callback] =
     [
-      { Bucket: bucket },
+      { Bucket: BUCKET },
       (err, data) => {
         if (err)
           console.log(err, err.stack)
@@ -517,8 +517,8 @@ window.onload = function () {
   initLoader()
 
   AWS.config.update({
-    accessKeyId: accessKey,
-    secretAccessKey: secretKey
+    accessKeyId: ACCESS_KEY,
+    secretAccessKey: SECRET_KEY
   })
 
   requestSongs()
