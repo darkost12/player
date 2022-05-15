@@ -1,33 +1,31 @@
 /**
  * Gets songs from S3 Object Storage through REST API and puts in the custom WEB-player.
  */
-const OVERLAY = document.getElementsByClassName('overlay')[0]                                     //Shadowed loading overlay
-const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 //The link to the <h> element.
-const PLAYER = document.getElementsByClassName('music-player')[0]                                 //The link to the <audio> element in HTML code.
-const TIMING = document.getElementsByClassName('current-time')[0]                                 //The link to the <div> element.
-const SPINNER = document.getElementsByClassName('load-spinner')[0]                                //Spinner on loading overlay
-const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0]                         //The link to the <img> element.
-const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]                         //The link to the <img> element.
-const POSITION = document.getElementsByClassName('current-position')[0]                           //The link to the <input type="range"> element.
-const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    //The link to the <input type="range"> element.
-const SPECTRUM_SMOOTHING_CONSTANT = 0.75                                                          //The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
-const STOP_RENDER_DELAY = 0.5                                                                     //The time in seconds after which the rendering stops on pause or mute.
+const OVERLAY = document.getElementsByClassName('overlay')[0]                                     // Shadowed loading overlay
+const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 // The link to the <h> element.
+const PLAYER = document.getElementsByClassName('music-player')[0]                                 // The link to the <audio> element in HTML code.
+const TIMING = document.getElementsByClassName('current-time')[0]                                 // The link to the <div> element.
+const SPINNER = document.getElementsByClassName('load-spinner')[0]                                // Spinner on loading overlay
+const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0]                         // The link to the <img> element.
+const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]                         // The link to the <img> element.
+const POSITION = document.getElementsByClassName('current-position')[0]                           // The link to the <input type="range"> element.
+const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    // The link to the <input type="range"> element.
+const SPECTRUM_SMOOTHING_CONSTANT = 0.75                                                          // The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
+const STOP_RENDER_DELAY = 0.5                                                                     // The time in seconds after which the rendering stops on pause or mute.
 let s3 = undefined
-let songList = []                                                                                 //The information after the shuffle process. Ready to be put in the actual play.
-let currentSong                                                                                   //The global identificator of currently playing song
-let audioContext, visualContext, audioSrc, analyser                                               //Variables for audioContext analysis.
-let canvas, canvasOptions, dpr, capHeight                                                         //Canvas and bars variables.
-let lastVolume = 0.5                                                                              //Last non-zero volume of audio.
-let stopTimestamp = null                                                                          //Stop or mute time.
+let songList = []                                                                                 // The information after the shuffle process. Ready to be put in the actual play.
+let currentSong                                                                                   // The global identificator of currently playing song
+let audioContext, visualContext, audioSrc, analyser                                               // Variables for audioContext analysis.
+let canvas, canvasOptions, dpr, capHeight                                                         // Canvas and bars variables.
+let lastVolume = 0.5                                                                              // Last non-zero volume of audio.
+let stopTimestamp = null                                                                          // Stop or mute time.
 
-const titleReplaces = [                                                                           //List of title transitions.
+const titleReplaces = [                                                                           // List of title transitions.
   { from: '.mp3', to: '' },
   { from: 'AC_DC', to: 'AC/DC' }
 ]
 
-const subpath = 'music/'
-
-window.AudioContext =                                                                             //Automatic detection of webkit.
+window.AudioContext =                                                                             // Automatic detection of webkit.
   window.AudioContext || window.webkitAudioContext || window.mozAudioContext
 
 /**
@@ -39,7 +37,7 @@ function shuffleMusic(songs) {
   navigator.mediaSession.playbackState = 'paused'
   songList = songs
 
-  let ctr = songs.length,                                                                         //Fisher-Yates shuffle algorithm
+  let ctr = songs.length,                                                                         // Fisher-Yates shuffle algorithm
     index,
     temp
 
@@ -109,7 +107,7 @@ function updateMetadata(fullTitle, year) {
           type: 'image/png'
         }
       ],
-      album: year                                                                                  //Put year in album field cause there is no such field sadly
+      album: year                                                                                  // Put year in album field cause there is no such field sadly
     })
   }
 }
@@ -381,13 +379,13 @@ function link(title) {
   if (isBucketPrivate()) {
     const url = s3.getSignedUrl('getObject', {
       Bucket: BUCKET,
-      Key: subpath + title,
+      Key: SUBPATH + title,
       Expires: 1800
     })
 
     return url
   } else {
-    return 'https://' + BUCKET + `.${ENDPOINT}/` + subpath + title
+    return 'https://' + BUCKET + '.' + ENDPOINT + SUBPATH + title
   }
 }
 
@@ -401,7 +399,7 @@ function requestSongs() {
 
   let receivedSongs = []
 
-  const subpathRegexp = new RegExp(subpath, 'g')
+  const subpathRegexp = new RegExp(SUBPATH, 'g')
 
   const [params, callback] =
     [
