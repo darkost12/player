@@ -22,7 +22,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: linear-gradient(90deg, #2196f3, #f64f59);
+  background-image: linear-gradient(135deg, #1e3c72, #2761c7);
 }
 
 .next-button {
@@ -60,7 +60,7 @@ body {
 .content {
   height: auto;
   width: 100%;
-  bottom: 160px;
+  bottom: 180px;
   padding-top: 50px;
   top: 0;
   position: fixed;
@@ -76,7 +76,7 @@ nav {
   display: none;
   position: fixed;
   padding-top: 40vh;
-  background-image: linear-gradient(90deg, #2a0845, #6441a5);
+  background-image: linear-gradient(135deg, #1b3462, #2153aa);
   opacity: 0.9;
   z-index: 5;
 }
@@ -89,7 +89,8 @@ nav {
 @-webkit-keyframes rotation {
   from {
     -webkit-transform: rotate(0deg);
-  }  to {
+  }
+  to {
     -webkit-transform: rotate(359deg);
   }
 }
@@ -98,11 +99,12 @@ nav {
   text-align: center;
   display: none;
   font-family: 'venus';
+  color: #cfefff;
 }
 
 @font-face {
   font-family: 'venus';
-  src: url('../res/venus.ttf');
+  src: url('../assets/venus.ttf');
 }
 
 .name-holder {
@@ -131,8 +133,8 @@ nav {
   outline: none;
   opacity: 0.3;
   margin: 0 auto;
-  -webkit-transition: .2s;
-  transition: opacity .2s;
+  -webkit-transition: 0.2s;
+  transition: opacity 0.2s;
 }
 
 .current-position:hover {
@@ -144,7 +146,7 @@ nav {
   text-align: right;
   padding-left: 1vw;
   font-family: 'venus';
-  font-size:15px;
+  font-size: 15px;
 }
 
 .volume-button {
@@ -180,14 +182,15 @@ nav {
   background: #d3d3d3;
   margin-top: -3px;
   outline: none;
-  -webkit-transition: .2s;
-  transition: opacity .2s;
+  -webkit-transition: 0.2s;
+  transition: opacity 0.2s;
 }
 
 .volume-regulator:hover {
   opacity: 0.5;
 }
-.volume-regulator::-moz-range-thumb, .current-position::-moz-range-thumb {
+.volume-regulator::-moz-range-thumb,
+.current-position::-moz-range-thumb {
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -195,7 +198,8 @@ nav {
   cursor: pointer;
 }
 
-.volume-regulator::-webkit-slider-thumb, .current-position::-webkit-slider-thumb {
+.volume-regulator::-webkit-slider-thumb,
+.current-position::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 25px;
@@ -222,7 +226,6 @@ nav {
 .chart {
   margin: 0 auto;
   text-align: center;
-  bottom: 50px;
   width: 100%;
   height: 100%;
 }
@@ -239,11 +242,12 @@ nav {
 .footing-span {
   position: fixed;
   width: 100%;
-  height: 150px;
+  height: 165px;
   bottom: 0;
 }
 
 .status-string {
   display: inline-block;
   width: 100%;
+  margin: 10px 0;
 }

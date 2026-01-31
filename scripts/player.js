@@ -1,31 +1,34 @@
 /**
  * Gets songs from S3 Object Storage through REST API and puts in the custom WEB-player.
  */
-const OVERLAY = document.getElementsByClassName('overlay')[0]                                     // Shadowed loading overlay
-const SONG_NAME = document.getElementsByClassName('song-name')[0]                                 // The link to the <h> element.
-const PLAYER = document.getElementsByClassName('music-player')[0]                                 // The link to the <audio> element in HTML code.
-const TIMING = document.getElementsByClassName('current-time')[0]                                 // The link to the <div> element.
-const SPINNER = document.getElementsByClassName('load-spinner')[0]                                // Spinner on loading overlay
-const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0]                         // The link to the <img> element.
-const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0]                         // The link to the <img> element.
-const POSITION = document.getElementsByClassName('current-position')[0]                           // The link to the <input type="range"> element.
-const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0]                    // The link to the <input type="range"> element.
-const SPECTRUM_SMOOTHING_CONSTANT = 0.75                                                          // The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
-const STOP_RENDER_DELAY = 0.5                                                                     // The time in seconds after which the rendering stops on pause or mute.
+const OVERLAY = document.getElementsByClassName('overlay')[0] // Shadowed loading overlay
+const SONG_NAME = document.getElementsByClassName('song-name')[0] // The link to the <h> element.
+const PLAYER = document.getElementsByClassName('music-player')[0] // The link to the <audio> element in HTML code.
+const TIMING = document.getElementsByClassName('current-time')[0] // The link to the <div> element.
+const SPINNER = document.getElementsByClassName('load-spinner')[0] // Spinner on loading overlay
+const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0] // The link to the <img> element.
+const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0] // The link to the <img> element.
+const POSITION = document.getElementsByClassName('current-position')[0] // The link to the <input type="range"> element.
+const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0] // The link to the <input type="range"> element.
+const SPECTRUM_SMOOTHING_CONSTANT = 0.75 // The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
+const STOP_RENDER_DELAY = 0.5 // The time in seconds after which the rendering stops on pause or mute.
+const { BUCKET, ENDPOINT, SUBPATH, ACCESS_KEY, SECRET_KEY } = window.APP_CONFIG
 let s3 = undefined
-let songList = []                                                                                 // The information after the shuffle process. Ready to be put in the actual play.
-let currentSong                                                                                   // The global identificator of currently playing song
-let audioContext, visualContext, audioSrc, analyser                                               // Variables for audioContext analysis.
-let canvas, canvasOptions, dpr, capHeight                                                         // Canvas and bars variables.
-let lastVolume = 0.5                                                                              // Last non-zero volume of audio.
-let stopTimestamp = null                                                                          // Stop or mute time.
+let songList = [] // The information after the shuffle process. Ready to be put in the actual play.
+let currentSong // The global identificator of currently playing song
+let audioContext, visualContext, audioSrc, analyser, gainNode // Variables for audioContext analysis.
+let canvas, canvasOptions, dpr, capHeight // Canvas and bars variables.
+let lastVolume = 0.5 // Last non-zero volume of audio.
+let stopTimestamp = null // Stop or mute time.
+PLAYER.volume = 1
 
-const titleReplaces = [                                                                           // List of title transitions.
+const titleReplaces = [
+  // List of title transitions.
   { from: '.mp3', to: '' },
-  { from: 'AC_DC', to: 'AC/DC' }
+  { from: 'AC_DC', to: 'AC/DC' },
 ]
 
-window.AudioContext =                                                                             // Automatic detection of webkit.
+window.AudioContext = // Automatic detection of webkit.
   window.AudioContext || window.webkitAudioContext || window.mozAudioContext
 
 /**
@@ -37,7 +40,7 @@ function shuffleMusic(songs) {
   navigator.mediaSession.playbackState = 'paused'
   songList = songs
 
-  let ctr = songs.length,                                                                         // Fisher-Yates shuffle algorithm
+  let ctr = songs.length, // Fisher-Yates shuffle algorithm
     index,
     temp
 
@@ -58,7 +61,7 @@ function shuffleMusic(songs) {
  * Loads the first element of shuffled song list to the HTML. Also turns off the overlay.
  */
 function showFirst() {
-  POSITION.value = 1
+  POSITION.value = 0
 
   if (navigator.mediaSession.playbackState === 'paused' && PLAYER.src == '') {
     updateTitle()
@@ -100,14 +103,15 @@ function updateMetadata(fullTitle, year) {
         {
           src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg',
           sizes: '320x240',
-          type: 'image/png'
-        }, {
+          type: 'image/png',
+        },
+        {
           src: 'https://i1.wp.com/edgeeffects.net/wp-content/uploads/2021/03/The_Earth_seen_from_Apollo_17.jpg?ssl=1',
           sizes: '512x512',
-          type: 'image/png'
-        }
+          type: 'image/png',
+        },
       ],
-      album: year                                                                                  // Put year in album field cause there is no such field sadly
+      album: year, // Put year in album field cause there is no such field sadly
     })
   }
 }
@@ -127,7 +131,9 @@ function prepareTitle(title) {
 function updateTitle() {
   const preparedTitleWithYear = prepareTitle(songList[currentSong])
 
-  const [fullTitle, possibleYear] = preparedTitleWithYear.split(/(\d{4})$/).map(v => v ? v.trim() : v)
+  const [fullTitle, possibleYear] = preparedTitleWithYear
+    .split(/(\d{4})$/)
+    .map((v) => (v ? v.trim() : v))
 
   SONG_NAME.innerHTML = fullTitle
   updateMetadata(fullTitle, possibleYear)
@@ -137,7 +143,7 @@ function updateTitle() {
  * Handles song index when switching from last song in list to the first and vice versa.
  */
 function firstAndLast() {
-  if (currentSong > (songList.length - 1)) {
+  if (currentSong > songList.length - 1) {
     currentSong = 0
   } else if (currentSong < 0) {
     currentSong = songList.length - 1
@@ -196,9 +202,15 @@ function previousSong() {
  */
 function updateDisplayedTime() {
   if (Math.floor(PLAYER.currentTime % 60) < 10)
-    TIMING.innerHTML = Math.floor(PLAYER.currentTime / 60) + ':0' + Math.floor(PLAYER.currentTime % 60)
+    TIMING.innerHTML =
+      Math.floor(PLAYER.currentTime / 60) +
+      ':0' +
+      Math.floor(PLAYER.currentTime % 60)
   else
-    TIMING.innerHTML = Math.floor(PLAYER.currentTime / 60) + ':' + Math.floor(PLAYER.currentTime % 60)
+    TIMING.innerHTML =
+      Math.floor(PLAYER.currentTime / 60) +
+      ':' +
+      Math.floor(PLAYER.currentTime % 60)
 }
 
 /**
@@ -233,21 +245,25 @@ function openContext() {
   if (!audioContext) {
     audioContext = new AudioContext()
 
-    if (!audioSrc)
-      audioSrc = audioContext.createMediaElementSource(PLAYER)
-
+    audioSrc = audioContext.createMediaElementSource(PLAYER)
     analyser = audioContext.createAnalyser()
-    audioSrc.connect(analyser)
+    gainNode = audioContext.createGain()
+
+    audioSrc.connect(gainNode)
+    gainNode.connect(analyser)
     analyser.connect(audioContext.destination)
+
     analyser.smoothingTimeConstant = SPECTRUM_SMOOTHING_CONSTANT
     analyser.fftSize = 512
+    analyser.minDecibels = -90
 
-    if (!visualContext) {
-      setupVisualContext()
-    }
+    gainNode.gain.value = lastVolume
+
+    setupVisualContext()
+    initializeOptions()
+
+    renderFrame()
   }
-
-  renderFrame()
 }
 
 /**
@@ -267,10 +283,10 @@ function initializeOptions() {
       const g = visualContext.createLinearGradient(0, barHeight, 0, 0)
 
       g.addColorStop(1, '#0f3443')
-      g.addColorStop(0.5, '#34e89e')
-      g.addColorStop(0, 'hsl( 120, 100%, 50% )')
+      g.addColorStop(0.5, '#1FA2A8')
+      g.addColorStop(0, '#1abc9c')
       return g
-    })()
+    })(),
   }
 
   const frequencyUpper = audioContext.sampleRate / 2
@@ -286,7 +302,7 @@ function initializeOptions() {
     nOfBars: nOfBars,
     styles: styles,
     frequencyUpper: frequencyUpper,
-    frequencyLimit: frequencyLimit
+    frequencyLimit: frequencyLimit,
   }
 }
 
@@ -294,27 +310,7 @@ function initializeOptions() {
  * Draws new frame of spectrum visualization.
  */
 function renderFrame() {
-  function clearCanvas() {
-    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
-
-    for (let i = 0; i < opts.nOfBars; i++) {
-      const xPosition = opts.barSpacing * (i + 0.5)
-
-      if ((xPosition + opts.barWidth) < opts.innerWidth) {
-        ctx.fillStyle = opts.styles.capStyle
-
-        ctx.fillRect(
-          xPosition,
-          opts.barHeight,
-          opts.barWidth,
-          opts.capHeight
-        )
-      }
-    }
-  }
-
-  if (canvasOptions === undefined)
-    initializeOptions()
+  if (!canvasOptions) initializeOptions()
 
   const ctx = visualContext
   const opts = canvasOptions
@@ -322,52 +318,43 @@ function renderFrame() {
   ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
   const frequencyData = new Uint8Array(analyser.frequencyBinCount)
+  analyser.getByteFrequencyData(frequencyData)
 
   const step =
-    (frequencyData.length * (opts.frequencyLimit / opts.frequencyUpper) - 1)
-    / (opts.nOfBars - 1)
-
-  analyser.getByteFrequencyData(frequencyData)
+    (frequencyData.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
+    (opts.nOfBars - 1)
 
   for (let i = 0; i < opts.nOfBars; i++) {
     const value = frequencyData[Math.floor(i * step)] / 255
-    const xPosition = opts.barSpacing * (i + 0.5)
+    const x = opts.barSpacing * (i + 0.5)
 
-    if ((xPosition + opts.barWidth) < opts.innerWidth) {
+    if (x + opts.barWidth < opts.innerWidth) {
       ctx.fillStyle = opts.styles.gradient
-
       ctx.fillRect(
-        xPosition,
+        x,
         opts.barHeight * (1 - value) + opts.capHeight,
         opts.barWidth,
-        opts.barHeight * value
+        opts.barHeight * value,
       )
 
       ctx.fillStyle = opts.styles.capStyle
-
       ctx.fillRect(
-        xPosition,
+        x,
         opts.barHeight * (1 - value),
         opts.barWidth,
-        opts.capHeight
+        opts.capHeight,
       )
     }
   }
 
-  if (!PLAYER.paused && !PLAYER.muted && stopTimestamp !== null) {
-    requestAnimationFrame(renderFrame)
-  } else if (!PLAYER.paused && !PLAYER.muted || Date.now() - stopTimestamp < STOP_RENDER_DELAY * 1000) {
-    requestAnimationFrame(renderFrame)
-  } else {
-    clearCanvas()
-  }
+  requestAnimationFrame(renderFrame)
 }
 
 /**
  * @returns {bool}. Whether bucket public or private
  */
 function isBucketPrivate() {
-  return (ACCESS_KEY && SECRET_KEY)
+  return ACCESS_KEY && SECRET_KEY
 }
 
 /**
@@ -380,7 +367,7 @@ function link(title) {
     const url = s3.getSignedUrl('getObject', {
       Bucket: BUCKET,
       Key: SUBPATH + title,
-      Expires: 1800
+      Expires: 1800,
     })
 
     return url
@@ -401,19 +388,19 @@ function requestSongs() {
 
   const subpathRegexp = new RegExp(SUBPATH, 'g')
 
-  const [params, callback] =
-    [
-      { Bucket: BUCKET },
-      (err, data) => {
-        if (err)
-          console.log(err, err.stack)
-        else {
-          data.Contents.forEach(song => receivedSongs.push(song.Key.replace(subpathRegexp, '')))
+  const [params, callback] = [
+    { Bucket: BUCKET },
+    (err, data) => {
+      if (err) console.log(err, err.stack)
+      else {
+        data.Contents.forEach((song) =>
+          receivedSongs.push(song.Key.replace(subpathRegexp, '')),
+        )
 
-          shuffleMusic(receivedSongs.filter(k => k.includes('.mp3')))
-        }
+        shuffleMusic(receivedSongs.filter((k) => k.includes('.mp3')))
       }
-    ]
+    },
+  ]
 
   if (isBucketPrivate()) {
     s3.listObjects(params, callback)
@@ -452,7 +439,7 @@ function nextSongOnEnd() {
  * Updates displayed current time.
  */
 function changeTime() {
-  PLAYER.currentTime = PLAYER.duration / 100 * POSITION.value
+  PLAYER.currentTime = (PLAYER.duration / 100) * POSITION.value
 }
 
 /**
@@ -462,50 +449,70 @@ function moveSlider() {
   if (PLAYER.currentTime == 0) {
     POSITION.value = 1
   } else {
-    POSITION.value = (PLAYER.currentTime * 100 / PLAYER.duration)
+    POSITION.value = (PLAYER.currentTime * 100) / PLAYER.duration
   }
 
   updateDisplayedTime()
 }
 
 /**
- * Toggles the mute icon according to the volume.
- * @param volume {number}. Current player's volume.
+ * Checks whether the audio is muted.
  */
-function updateMuteButtonIcon(volume) {
-  VOLUME_BUTTON.src = (volume == 0) ? 'res/mute.png' : 'res/volume.png'
+function isMuted() {
+  const vol = VOLUME_POSITION ? Number(VOLUME_POSITION.value) : lastVolume
+  return vol < 0.001
+}
+
+/**
+ * Toggles the mute icon according to the volume.
+ */
+function updateVolumeButtonIcon() {
+  VOLUME_BUTTON.src = isMuted() ? 'assets/mute.png' : 'assets/volume.png'
 }
 
 /**
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
-  PLAYER.volume = VOLUME_POSITION.value
-  openContext()
+  const vol = Number(VOLUME_POSITION.value)
+  lastVolume = vol
+
+  if (!gainNode) {
+    openContext()
+  }
+
+  gainNode.gain.setTargetAtTime(vol, audioContext.currentTime, 0.01)
+  updateVolumeButtonIcon()
 }
 
 /**
  * Toggles mute on click.
  */
 function toggleMute() {
-  if (!PLAYER.muted) {
-    lastVolume = PLAYER.volume
-    PLAYER.muted = true
+  if (!gainNode || !audioContext) {
+    openContext()
+    return
+  }
+
+  gainNode.gain.cancelScheduledValues(audioContext.currentTime)
+
+  if (gainNode.gain.value > 0.001) {
+    lastVolume = gainNode.gain.value
+    gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.04)
     VOLUME_POSITION.value = 0
   } else {
-    PLAYER.muted = false
-    PLAYER.volume = lastVolume
+    gainNode.gain.setTargetAtTime(lastVolume, audioContext.currentTime, 0.04)
     VOLUME_POSITION.value = lastVolume
   }
 
-  openContext()
+  updateVolumeButtonIcon()
 }
 
 /**
  * Updates play/pause icon based on slider value.
  */
 function updatePlayIcon() {
-  TOGGLE_BUTTON.src = PLAYER.paused ? 'res/play.png' : 'res/pause.png'
+  TOGGLE_BUTTON.src = PLAYER.paused ? 'assets/play.png' : 'assets/pause.png'
 }
 
 /**
@@ -516,11 +523,10 @@ window.onload = function () {
 
   AWS.config.update({
     accessKeyId: ACCESS_KEY,
-    secretAccessKey: SECRET_KEY
+    secretAccessKey: SECRET_KEY,
   })
 
   requestSongs()
-  PLAYER.volume = lastVolume
 
   window.addEventListener('resize', updateCanvasParameters)
 
@@ -538,21 +544,24 @@ window.onload = function () {
     updatePlayIcon()
   })
 
+  PLAYER.addEventListener('seeking', () => {
+    if (!gainNode) return
+    gainNode.gain.cancelScheduledValues(audioContext.currentTime)
+    gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime)
+  })
+
+  PLAYER.addEventListener('seeked', () => {
+    if (!gainNode) return
+    gainNode.gain.setTargetAtTime(
+      VOLUME_POSITION.value,
+      audioContext.currentTime,
+      0.02,
+    )
+  })
+
   POSITION.addEventListener('input', changeTime)
   VOLUME_BUTTON.addEventListener('click', toggleMute)
   VOLUME_POSITION.addEventListener('input', changeVolume)
-
-  PLAYER.addEventListener('volumechange', () => {
-    updateMuteButtonIcon(VOLUME_POSITION.value)
-
-    if (VOLUME_POSITION.value == 0) {
-      PLAYER.muted = true
-    } else {
-      PLAYER.muted = false
-    }
-
-    stopTimestamp = PLAYER.muted || PLAYER.volume === 0 ? Date.now() : null
-  })
 
   navigator.mediaSession.setActionHandler('previoustrack', previousSong)
   navigator.mediaSession.setActionHandler('nexttrack', nextSong)

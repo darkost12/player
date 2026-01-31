@@ -4,18 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <title> Darkost's player </title>
-  <link rel="icon" type="image/png" href="res/favicon.ico" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/png" href="assets/favicon.ico" />
+  <link rel="stylesheet" href="styles/style.css" />
 
-  <script defer language="javascript" type="text/javascript" src="js/index.js"></script>
   <script language="javascript" type="text/javascript"
     src="https://sdk.amazonaws.com/js/aws-sdk-2.524.0.min.js"></script>
-  <script language="javascript" type="text/javascript" src="js/settings.js"></script>
+  <script src="scripts/config.js"></script>
+  <script src="scripts/config.local.js"></script>
+  <script defer src="scripts/player.js"></script>
 </head>
 
 <body>
   <div class="overlay">
-    <img class="load-spinner" src="res/loading.png" />
+    <img class="load-spinner" src="assets/loading.png" />
   </div>
   <div class="content">
     <div class="chart">
@@ -33,7 +34,7 @@
     </div>
     <div class="status-string">
       <div class="volume-settings">
-        <img src="res/volume.png" class="no-select volume-button" />
+        <img src="assets/volume.png" class="no-select volume-button" />
         <input type="range" min="0" max="1" value="0.5" step="0.01" class="volume-regulator">
       </div>
       <div class="slider-container">
@@ -45,13 +46,13 @@
       <nav>
         <div class="no-select control-panel">
           <button type="button" class="button-round no-select previous" onclick="previousSong()">
-            <img src="res/previous.png" class="buttons previous-button no-select" />
+            <img src="assets/previous.png" class="buttons previous-button no-select" />
           </button>
           <button type="button" class="button-round no-select toggle" onclick="toggleMusic()">
-            <img src="res/play.png" class="buttons toggle-button no-select" />
+            <img src="assets/play.png" class="buttons toggle-button no-select" />
           </button>
           <button type="button" class="button-round no-select next" onclick="nextSong()">
-            <img src="res/next.png" class="buttons next-button no-select" />
+            <img src="assets/next.png" class="buttons next-button no-select" />
           </button>
         </div>
       </nav>
