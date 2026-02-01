@@ -24,7 +24,7 @@
     </div>
     <section class="equalizer">
       <div>
-        <audio class="music-player" preload="metadata" crossorigin="anonymous" />
+        <audio class="audio" preload="metadata" crossorigin="anonymous" />
       </div>
     </section>
   </div>
@@ -38,21 +38,21 @@
         <input type="range" min="0" max="1" value="0.5" step="0.01" class="volume-regulator">
       </div>
       <div class="slider-container">
-        <input type="range" min="1" max="100" value="1" class="current-position">
+        <input type="range" min="1" max="100" value="1" class="progress">
       </div>
       <div class="current-time"> --:-- </div>
     </div>
     <footer>
       <nav>
         <div class="no-select control-panel">
-          <button type="button" class="button-round no-select previous" onclick="previousSong()">
-            <img src="assets/previous.png" class="buttons previous-button no-select" />
+          <button type="button" class="button no-select previous" onclick="previousSong()">
+            <img src="assets/previous.png" class="button-icon previous-button no-select" />
           </button>
-          <button type="button" class="button-round no-select toggle" onclick="toggleMusic()">
-            <img src="assets/play.png" class="buttons toggle-button no-select" />
+          <button type="button" class="button no-select toggle" onclick="toggleMusic()">
+            <img src="assets/play.png" class="button-icon toggle-button no-select" />
           </button>
-          <button type="button" class="button-round no-select next" onclick="nextSong()">
-            <img src="assets/next.png" class="buttons next-button no-select" />
+          <button type="button" class="button no-select next" onclick="nextSong()">
+            <img src="assets/next.png" class="button-icon next-button no-select" />
           </button>
         </div>
       </nav>

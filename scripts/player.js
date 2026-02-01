@@ -1,26 +1,179 @@
 /**
  * Gets songs from S3 Object Storage through REST API and puts in the custom WEB-player.
  */
-const OVERLAY = document.getElementsByClassName('overlay')[0] // Shadowed loading overlay
-const SONG_NAME = document.getElementsByClassName('song-name')[0] // The link to the <h> element.
-const PLAYER = document.getElementsByClassName('music-player')[0] // The link to the <audio> element in HTML code.
-const TIMING = document.getElementsByClassName('current-time')[0] // The link to the <div> element.
-const SPINNER = document.getElementsByClassName('load-spinner')[0] // Spinner on loading overlay
-const TOGGLE_BUTTON = document.getElementsByClassName('toggle-button')[0] // The link to the <img> element.
-const VOLUME_BUTTON = document.getElementsByClassName('volume-button')[0] // The link to the <img> element.
-const POSITION = document.getElementsByClassName('current-position')[0] // The link to the <input type="range"> element.
-const VOLUME_POSITION = document.getElementsByClassName('volume-regulator')[0] // The link to the <input type="range"> element.
-const SPECTRUM_SMOOTHING_CONSTANT = 0.75 // The constant determines how smooth the spectrum's change will be. Optimal range: 0.7-0.9
-const STOP_RENDER_DELAY = 0.5 // The time in seconds after which the rendering stops on pause or mute.
+const DOM = {
+  overlay: document.querySelector('.overlay'),
+  audio: document.querySelector('.audio'),
+  songName: document.querySelector('.song-name'),
+  toggleButton: document.querySelector('.toggle-button'),
+  time: document.querySelector('.current-time'),
+  volumeButton: document.querySelector('.volume-button'),
+  progress: document.querySelector('.progress'),
+  volume: document.querySelector('.volume-regulator'),
+  canvas: document.querySelector('.canvas'),
+  spinner: document.querySelector('.load-spinner'),
+}
+const AUDIO_CONFIG = {
+  fftSize: 512,
+  minDecibels: -90,
+  smoothing: 0.75,
+}
 const { BUCKET, ENDPOINT, SUBPATH, ACCESS_KEY, SECRET_KEY } = window.APP_CONFIG
-let s3 = undefined
-let songList = [] // The information after the shuffle process. Ready to be put in the actual play.
-let currentSong // The global identificator of currently playing song
-let audioContext, visualContext, audioSrc, analyser, gainNode // Variables for audioContext analysis.
+const Player = {
+  songs: [],
+  index: 0,
+  isLoading: true,
+}
+const Audio = {
+  context: null,
+  analyzer: null,
+  gainNode: null,
+  lastVolume: 0.5,
+  isSeeking: false,
+  seekTimeout: null,
+
+  init() {
+    if (!this.context) {
+      this.context = new AudioContext()
+      const src = this.context.createMediaElementSource(DOM.audio)
+
+      this.analyzer = this.context.createAnalyser()
+      this.analyzer.fftSize = AUDIO_CONFIG.fftSize
+      this.analyzer.minDecibels = AUDIO_CONFIG.minDecibels
+      this.analyzer.smoothingTimeConstant = AUDIO_CONFIG.smoothing
+
+      this.gainNode = this.context.createGain()
+      src.connect(this.gainNode)
+      this.gainNode.connect(this.analyzer)
+      this.analyzer.connect(this.context.destination)
+
+      Object.assign(this.analyzer, AUDIO_CONFIG)
+      this.gainNode.gain.value = this.lastVolume
+
+      Visualizer.init()
+    }
+  },
+
+  resume() {
+    if (this.context?.state === 'suspended') {
+      this.context.resume()
+    }
+  },
+
+  setVolume(value) {
+    this.lastVolume = value
+
+    if (this.gainNode) {
+      this.gainNode.gain.setTargetAtTime(value, this.context.currentTime, 0.01)
+    }
+  },
+}
+
+const Visualizer = {
+  running: false,
+
+  init() {
+    setupVisualContext()
+    initializeOptions()
+
+    if (!this.frequencyData) {
+      this.frequencyData = new Uint8Array(Audio.analyzer.frequencyBinCount)
+      this.decayData = new Float32Array(Audio.analyzer.frequencyBinCount)
+    }
+
+    if (!this.running) {
+      this.running = true
+      this.render()
+    }
+  },
+
+  render() {
+    if (this.running) {
+      const canSample = !DOM.audio.paused && !Audio.isSeeking && !isMuted()
+
+      if (canSample) {
+        Audio.analyzer.getByteFrequencyData(this.frequencyData)
+      }
+
+      for (let i = 0; i < this.decayData.length; i++) {
+        const input = canSample ? this.frequencyData[i] : 0
+        this.decayData[i] = Math.max(input, this.decayData[i] * 0.92)
+      }
+
+      drawFrame()
+      requestAnimationFrame(this.render.bind(this))
+    }
+  },
+}
+
+const S3 = {
+  client: null,
+
+  isPrivate() {
+    return ACCESS_KEY && SECRET_KEY
+  },
+
+  init() {
+    if (this.client) return
+
+    if (this.isPrivate()) {
+      AWS.config.update({
+        accessKeyId: ACCESS_KEY,
+        secretAccessKey: SECRET_KEY,
+      })
+    }
+
+    this.client = new AWS.S3({
+      endpoint: 'https://' + ENDPOINT,
+    })
+  },
+
+  listSongs() {
+    return new Promise((resolve, reject) => {
+      this.init()
+
+      const received = []
+      const subpathRegexp = new RegExp(SUBPATH, 'g')
+
+      const params = { Bucket: BUCKET }
+
+      const cb = (err, data) => {
+        if (err) {
+          reject(err)
+          return
+        }
+
+        data.Contents.forEach((song) => {
+          const key = song.Key.replace(subpathRegexp, '')
+          if (key.endsWith('.mp3')) received.push(key)
+        })
+
+        resolve(received)
+      }
+
+      if (this.isPrivate()) {
+        this.client.listObjects(params, cb)
+      } else {
+        this.client.makeUnauthenticatedRequest('listObjects', params, cb)
+      }
+    })
+  },
+
+  getSongUrl(title) {
+    if (this.isPrivate()) {
+      return this.client.getSignedUrl('getObject', {
+        Bucket: BUCKET,
+        Key: SUBPATH + title,
+        Expires: 1800,
+      })
+    } else {
+      return `https://${BUCKET}.${ENDPOINT}${SUBPATH}${title}`
+    }
+  },
+}
+
+let visualContext // Variables for audioContext analysis.
 let canvas, canvasOptions, dpr, capHeight // Canvas and bars variables.
-let lastVolume = 0.5 // Last non-zero volume of audio.
-let stopTimestamp = null // Stop or mute time.
-PLAYER.volume = 1
 
 const titleReplaces = [
   // List of title transitions.
@@ -31,28 +184,30 @@ const titleReplaces = [
 window.AudioContext = // Automatic detection of webkit.
   window.AudioContext || window.webkitAudioContext || window.mozAudioContext
 
+DOM.audio.volume = 1
+
 /**
  * Shuffles music after getting through API call.
  * @param {string[]} songs. Array of songs' names received from Object Storage.
  */
 function shuffleMusic(songs) {
-  PLAYER.currentTime = 0
+  DOM.audio.currentTime = 0
   navigator.mediaSession.playbackState = 'paused'
-  songList = songs
+  Player.songs = songs
 
-  let ctr = songs.length, // Fisher-Yates shuffle algorithm
+  let remaining = songs.length, // Fisher-Yates shuffle algorithm
     index,
     temp
 
-  while (ctr > 0) {
-    index = Math.floor(Math.random() * ctr)
-    ctr--
-    temp = songList[ctr]
-    songList[ctr] = songList[index]
-    songList[index] = temp
+  while (remaining > 0) {
+    index = Math.floor(Math.random() * remaining)
+    remaining--
+    temp = Player.songs[remaining]
+    Player.songs[remaining] = Player.songs[index]
+    Player.songs[index] = temp
   }
 
-  currentSong = 0
+  Player.index = 0
 
   showFirst()
 }
@@ -61,14 +216,17 @@ function shuffleMusic(songs) {
  * Loads the first element of shuffled song list to the HTML. Also turns off the overlay.
  */
 function showFirst() {
-  POSITION.value = 0
+  DOM.progress.value = 0
 
-  if (navigator.mediaSession.playbackState === 'paused' && PLAYER.src == '') {
+  if (
+    navigator.mediaSession.playbackState === 'paused' &&
+    DOM.audio.src === ''
+  ) {
     updateTitle()
     disableLoader()
 
-    PLAYER.src = link(songList[0])
-    SONG_NAME.style.display = 'inline-block'
+    DOM.audio.src = songUrl(Player.songs[0])
+    DOM.songName.style.display = 'inline-block'
   }
 }
 
@@ -76,16 +234,16 @@ function showFirst() {
  * Shows loader spinner at the very beginning.
  */
 function initLoader() {
-  OVERLAY.style.display = 'block'
-  SPINNER.style.display = 'block'
+  DOM.overlay.style.display = 'block'
+  DOM.spinner.style.display = 'block'
 }
 
 /**
  * Disables shadowing of background and loader spinner.
  */
 function disableLoader() {
-  OVERLAY.style.display = 'none'
-  SPINNER.style.display = 'none'
+  DOM.overlay.style.display = 'none'
+  DOM.spinner.style.display = 'none'
 }
 
 /**
@@ -129,24 +287,29 @@ function prepareTitle(title) {
  * Updates title of song on switch. Also removes extension from the title.
  */
 function updateTitle() {
-  const preparedTitleWithYear = prepareTitle(songList[currentSong])
+  const preparedTitleWithYear = prepareTitle(Player.songs[Player.index])
 
   const [fullTitle, possibleYear] = preparedTitleWithYear
     .split(/(\d{4})$/)
     .map((v) => (v ? v.trim() : v))
 
-  SONG_NAME.innerHTML = fullTitle
+  DOM.songName.innerHTML = fullTitle
   updateMetadata(fullTitle, possibleYear)
 }
 
 /**
  * Handles song index when switching from last song in list to the first and vice versa.
+ * @param {number} index. Current song index.
+ * @param {number} length. Length of song list.
+ * @return {number} normalized index.
  */
-function firstAndLast() {
-  if (currentSong > songList.length - 1) {
-    currentSong = 0
-  } else if (currentSong < 0) {
-    currentSong = songList.length - 1
+function normalizeSongIndex(index, length) {
+  if (index >= length) {
+    return 0
+  } else if (index < 0) {
+    return length - 1
+  } else {
+    return index
   }
 }
 
@@ -154,16 +317,39 @@ function firstAndLast() {
  * Sets the logic of toggle button. Also opens/closes contexts.
  */
 function toggleMusic() {
-  if (PLAYER.src != '' && PLAYER.paused) {
-    PLAYER.play()
-    openContext()
-
-    navigator.mediaSession.playbackState = 'playing'
-  } else if (PLAYER.src != '' && !PLAYER.paused) {
-    PLAYER.pause()
-
-    navigator.mediaSession.playbackState = 'paused'
+  if (DOM.audio.src != '' && DOM.audio.paused) {
+    playCurrentSong()
+  } else if (DOM.audio.src != '' && !DOM.audio.paused) {
+    pauseSong()
   }
+}
+
+/**
+ * Updates audio source to load song by index.
+ * @param {number} index. Index of song to load.
+ */
+function loadSong(index) {
+  DOM.audio.pause()
+  DOM.audio.src = songUrl(Player.songs[index])
+  DOM.audio.load()
+}
+
+/**
+ * Starts playing current song.
+ */
+function playCurrentSong() {
+  Audio.init()
+  Audio.resume()
+  DOM.audio.play().catch(() => {})
+  navigator.mediaSession.playbackState = 'playing'
+}
+
+/**
+ * Pauses current song.
+ */
+function pauseSong() {
+  DOM.audio.pause()
+  navigator.mediaSession.playbackState = 'paused'
 }
 
 /**
@@ -171,14 +357,10 @@ function toggleMusic() {
  */
 function changeSong() {
   navigator.mediaSession.playbackState = 'paused'
-  PLAYER.src = link(songList[currentSong])
 
-  PLAYER.oncanplay = () => {
-    PLAYER.play()
-    openContext()
-    navigator.mediaSession.playbackState = 'playing'
-    updateTitle()
-  }
+  loadSong(Player.index)
+  updateTitle()
+  playCurrentSong()
 }
 
 /**
@@ -201,16 +383,16 @@ function previousSong() {
  * Based on current timing of audio component fill the text area left of position element.
  */
 function updateDisplayedTime() {
-  if (Math.floor(PLAYER.currentTime % 60) < 10)
-    TIMING.innerHTML =
-      Math.floor(PLAYER.currentTime / 60) +
+  if (Math.floor(DOM.audio.currentTime % 60) < 10)
+    DOM.time.innerHTML =
+      Math.floor(DOM.audio.currentTime / 60) +
       ':0' +
-      Math.floor(PLAYER.currentTime % 60)
+      Math.floor(DOM.audio.currentTime % 60)
   else
-    TIMING.innerHTML =
-      Math.floor(PLAYER.currentTime / 60) +
+    DOM.time.innerHTML =
+      Math.floor(DOM.audio.currentTime / 60) +
       ':' +
-      Math.floor(PLAYER.currentTime % 60)
+      Math.floor(DOM.audio.currentTime % 60)
 }
 
 /**
@@ -239,34 +421,6 @@ function updateCanvasParameters() {
 }
 
 /**
- * Opens new context for current song.
- */
-function openContext() {
-  if (!audioContext) {
-    audioContext = new AudioContext()
-
-    audioSrc = audioContext.createMediaElementSource(PLAYER)
-    analyser = audioContext.createAnalyser()
-    gainNode = audioContext.createGain()
-
-    audioSrc.connect(gainNode)
-    gainNode.connect(analyser)
-    analyser.connect(audioContext.destination)
-
-    analyser.smoothingTimeConstant = SPECTRUM_SMOOTHING_CONSTANT
-    analyser.fftSize = 512
-    analyser.minDecibels = -90
-
-    gainNode.gain.value = lastVolume
-
-    setupVisualContext()
-    initializeOptions()
-
-    renderFrame()
-  }
-}
-
-/**
  * Initialize canvas options.
  */
 function initializeOptions() {
@@ -276,20 +430,20 @@ function initializeOptions() {
   const barWidth = 13
   const barSpacing = 25
   const barHeight = innerHeight - capHeight
-  const nOfBars = Math.round(innerWidth / barSpacing)
+  const barCount = Math.round(innerWidth / barSpacing)
   const styles = {
     capStyle: '#fff',
     gradient: (() => {
       const g = visualContext.createLinearGradient(0, barHeight, 0, 0)
 
       g.addColorStop(1, '#0f3443')
-      g.addColorStop(0.5, '#1FA2A8')
-      g.addColorStop(0, '#1abc9c')
+      g.addColorStop(0.5, '#1b8d93ff')
+      g.addColorStop(0, '#54d1daff')
       return g
     })(),
   }
 
-  const frequencyUpper = audioContext.sampleRate / 2
+  const frequencyUpper = Audio.context.sampleRate / 2
   const frequencyLimit = Math.min(16e3, frequencyUpper)
 
   canvasOptions = {
@@ -299,7 +453,7 @@ function initializeOptions() {
     barWidth: barWidth,
     barHeight: barHeight,
     barSpacing: barSpacing,
-    nOfBars: nOfBars,
+    barCount: barCount,
     styles: styles,
     frequencyUpper: frequencyUpper,
     frequencyLimit: frequencyLimit,
@@ -309,23 +463,22 @@ function initializeOptions() {
 /**
  * Draws new frame of spectrum visualization.
  */
-function renderFrame() {
-  if (!canvasOptions) initializeOptions()
+function drawFrame() {
+  if (!canvasOptions || !Audio.analyzer) return
 
   const ctx = visualContext
   const opts = canvasOptions
 
   ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
-  const frequencyData = new Uint8Array(analyser.frequencyBinCount)
-  analyser.getByteFrequencyData(frequencyData)
+  const decay = Visualizer.decayData
 
   const step =
-    (frequencyData.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
-    (opts.nOfBars - 1)
+    (decay.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
+    (opts.barCount - 1)
 
-  for (let i = 0; i < opts.nOfBars; i++) {
-    const value = frequencyData[Math.floor(i * step)] / 255
+  for (let i = 0; i < opts.barCount; i++) {
+    const value = decay[Math.floor(i * step)] / 255
     const x = opts.barSpacing * (i + 0.5)
 
     if (x + opts.barWidth < opts.innerWidth) {
@@ -346,8 +499,6 @@ function renderFrame() {
       )
     }
   }
-
-  requestAnimationFrame(renderFrame)
 }
 
 /**
@@ -358,70 +509,38 @@ function isBucketPrivate() {
 }
 
 /**
- * Gets signed or direct link via GET request using 'Key' parameter.
+ * Gets signed or direct url via GET request using 'Key' parameter.
  * @param {string} title. Song[i].Key (title of song).
  * @return {string} url. Signed url for audio.src.
  */
-function link(title) {
-  if (isBucketPrivate()) {
-    const url = s3.getSignedUrl('getObject', {
-      Bucket: BUCKET,
-      Key: SUBPATH + title,
-      Expires: 1800,
-    })
-
-    return url
-  } else {
-    return 'https://' + BUCKET + '.' + ENDPOINT + SUBPATH + title
-  }
+function songUrl(title) {
+  return S3.getSongUrl(title)
 }
 
 /**
  * Requests songs' data from bucket.
  */
-function requestSongs() {
-  s3 = new AWS.S3({
-    endpoint: 'https://' + ENDPOINT,
-  })
-
-  let receivedSongs = []
-
-  const subpathRegexp = new RegExp(SUBPATH, 'g')
-
-  const [params, callback] = [
-    { Bucket: BUCKET },
-    (err, data) => {
-      if (err) console.log(err, err.stack)
-      else {
-        data.Contents.forEach((song) =>
-          receivedSongs.push(song.Key.replace(subpathRegexp, '')),
-        )
-
-        shuffleMusic(receivedSongs.filter((k) => k.includes('.mp3')))
-      }
-    },
-  ]
-
-  if (isBucketPrivate()) {
-    s3.listObjects(params, callback)
-  } else {
-    s3.makeUnauthenticatedRequest('listObjects', params, callback)
+async function requestSongs() {
+  try {
+    const songs = await S3.listSongs()
+    shuffleMusic(songs)
+  } catch (err) {
+    console.error('Error fetching songs from S3:', err)
   }
 }
+
 /**
  * Increment current song index.
  */
 function incrementSong() {
-  currentSong += 1
-  firstAndLast()
+  Player.index = normalizeSongIndex(Player.index + 1, Player.songs.length)
 }
 
 /**
  * Decrement current song index.
  */
 function decrementSong() {
-  currentSong -= 1
-  firstAndLast()
+  Player.index = normalizeSongIndex(Player.index - 1, Player.songs.length)
 }
 
 /**
@@ -431,25 +550,18 @@ function nextSongOnEnd() {
   incrementSong()
   updateTitle()
 
-  PLAYER.src = link(songList[currentSong])
-  PLAYER.play()
-}
-
-/**
- * Updates displayed current time.
- */
-function changeTime() {
-  PLAYER.currentTime = (PLAYER.duration / 100) * POSITION.value
+  DOM.audio.src = songUrl(Player.songs[Player.index])
+  DOM.audio.play()
 }
 
 /**
  * Moves slider according to current time.
  */
 function moveSlider() {
-  if (PLAYER.currentTime == 0) {
-    POSITION.value = 1
+  if (DOM.audio.currentTime === 0) {
+    DOM.progress.value = 1
   } else {
-    POSITION.value = (PLAYER.currentTime * 100) / PLAYER.duration
+    DOM.progress.value = (DOM.audio.currentTime * 100) / DOM.audio.duration
   }
 
   updateDisplayedTime()
@@ -459,7 +571,7 @@ function moveSlider() {
  * Checks whether the audio is muted.
  */
 function isMuted() {
-  const vol = VOLUME_POSITION ? Number(VOLUME_POSITION.value) : lastVolume
+  const vol = DOM.volume ? Number(DOM.volume.value) : Audio.lastVolume
   return vol < 0.001
 }
 
@@ -467,21 +579,21 @@ function isMuted() {
  * Toggles the mute icon according to the volume.
  */
 function updateVolumeButtonIcon() {
-  VOLUME_BUTTON.src = isMuted() ? 'assets/mute.png' : 'assets/volume.png'
+  DOM.volumeButton.src = isMuted() ? 'assets/mute.png' : 'assets/volume.png'
 }
 
 /**
  * Changes the volume according to the slider position.
  */
 function changeVolume() {
-  const vol = Number(VOLUME_POSITION.value)
-  lastVolume = vol
+  const vol = Number(DOM.volume.value)
+  Audio.lastVolume = vol
 
-  if (!gainNode) {
-    openContext()
+  if (!Audio.gainNode || !Audio.context) {
+    Audio.init()
   }
 
-  gainNode.gain.setTargetAtTime(vol, audioContext.currentTime, 0.01)
+  Audio.gainNode.gain.setTargetAtTime(vol, Audio.context.currentTime, 0.01)
   updateVolumeButtonIcon()
 }
 
@@ -489,20 +601,24 @@ function changeVolume() {
  * Toggles mute on click.
  */
 function toggleMute() {
-  if (!gainNode || !audioContext) {
-    openContext()
+  if (!Audio.gainNode || !Audio.context) {
+    Audio.init()
     return
   }
 
-  gainNode.gain.cancelScheduledValues(audioContext.currentTime)
+  Audio.gainNode.gain.cancelScheduledValues(Audio.context.currentTime)
 
-  if (gainNode.gain.value > 0.001) {
-    lastVolume = gainNode.gain.value
-    gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.04)
-    VOLUME_POSITION.value = 0
+  if (Audio.gainNode.gain.value > 0.001) {
+    Audio.lastVolume = Audio.gainNode.gain.value
+    Audio.gainNode.gain.setTargetAtTime(0, Audio.context.currentTime, 0.04)
+    DOM.volume.value = 0
   } else {
-    gainNode.gain.setTargetAtTime(lastVolume, audioContext.currentTime, 0.04)
-    VOLUME_POSITION.value = lastVolume
+    Audio.gainNode.gain.setTargetAtTime(
+      Audio.lastVolume,
+      Audio.context.currentTime,
+      0.04,
+    )
+    DOM.volume.value = Audio.lastVolume
   }
 
   updateVolumeButtonIcon()
@@ -512,59 +628,95 @@ function toggleMute() {
  * Updates play/pause icon based on slider value.
  */
 function updatePlayIcon() {
-  TOGGLE_BUTTON.src = PLAYER.paused ? 'assets/play.png' : 'assets/pause.png'
+  DOM.toggleButton.src = DOM.audio.paused
+    ? 'assets/play.png'
+    : 'assets/pause.png'
 }
 
 /**
- * The boot and the listeners' logic.
+ * Adds all necessary event listeners.
  */
-window.onload = function () {
-  initLoader()
-
-  AWS.config.update({
-    accessKeyId: ACCESS_KEY,
-    secretAccessKey: SECRET_KEY,
-  })
-
-  requestSongs()
-
+function addListeners() {
   window.addEventListener('resize', updateCanvasParameters)
 
-  PLAYER.addEventListener('ended', nextSongOnEnd)
-  PLAYER.addEventListener('timeupdate', moveSlider)
-  PLAYER.addEventListener('play', () => {
-    stopTimestamp = null
+  DOM.audio.addEventListener('ended', nextSongOnEnd)
+  DOM.audio.addEventListener('timeupdate', moveSlider)
+  DOM.audio.addEventListener('play', () => {
+    Visualizer.paused = false
+    Visualizer.init()
 
     updatePlayIcon()
   })
 
-  PLAYER.addEventListener('pause', () => {
-    stopTimestamp = Date.now()
+  DOM.audio.addEventListener('pause', () => {
+    Visualizer.paused = true
 
     updatePlayIcon()
   })
 
-  PLAYER.addEventListener('seeking', () => {
-    if (!gainNode) return
-    gainNode.gain.cancelScheduledValues(audioContext.currentTime)
-    gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime)
-  })
+  DOM.audio.addEventListener('seeking', () => {
+    Audio.isSeeking = true
 
-  PLAYER.addEventListener('seeked', () => {
-    if (!gainNode) return
-    gainNode.gain.setTargetAtTime(
-      VOLUME_POSITION.value,
-      audioContext.currentTime,
-      0.02,
+    if (!Audio.gainNode || !Audio.context) return
+
+    Audio.gainNode.gain.cancelScheduledValues(Audio.context.currentTime)
+    Audio.gainNode.gain.setValueAtTime(
+      Audio.lastVolume,
+      Audio.context.currentTime,
     )
+
+    Visualizer.paused = true
   })
 
-  POSITION.addEventListener('input', changeTime)
-  VOLUME_BUTTON.addEventListener('click', toggleMute)
-  VOLUME_POSITION.addEventListener('input', changeVolume)
+  DOM.audio.addEventListener('seeked', async () => {
+    Audio.isSeeking = false
+
+    if (Audio.context && Audio.context.state !== 'running') {
+      try {
+        await Audio.context.resume() // Safari may auto-suspend, so resume
+      } catch (err) {
+        console.warn('AudioContext resume failed after seek', err)
+      }
+    }
+
+    Visualizer.paused = DOM.audio.paused
+
+    if (Audio.gainNode) {
+      Audio.gainNode.gain.setTargetAtTime(
+        Number(DOM.volume.value),
+        Audio.context.currentTime,
+        0.03,
+      )
+    }
+  })
+
+  DOM.progress.addEventListener('input', () => {
+    if (Audio.seekTimeout) clearTimeout(Audio.seekTimeout)
+
+    Audio.seekTimeout = setTimeout(() => {
+      if (!DOM.audio.duration) return
+
+      Audio.isSeeking = true
+      Visualizer.paused = true
+      DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
+    }, 20)
+  })
+
+  DOM.volumeButton.addEventListener('click', toggleMute)
+  DOM.volume.addEventListener('input', changeVolume)
 
   navigator.mediaSession.setActionHandler('previoustrack', previousSong)
   navigator.mediaSession.setActionHandler('nexttrack', nextSong)
   navigator.mediaSession.setActionHandler('pause', toggleMusic)
   navigator.mediaSession.setActionHandler('play', toggleMusic)
 }
+
+/**
+ * The boot and the listeners' logic.
+ */
+window.addEventListener('load', () => {
+  initLoader()
+  S3.init()
+  requestSongs()
+  addListeners()
+})
