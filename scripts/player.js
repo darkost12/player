@@ -13,11 +13,6 @@ const DOM = {
   canvas: document.querySelector('.canvas'),
   spinner: document.querySelector('.load-spinner'),
 }
-const AUDIO_CONFIG = {
-  fftSize: 512,
-  minDecibels: -90,
-  smoothing: 0.75,
-}
 const { BUCKET, ENDPOINT, SUBPATH, ACCESS_KEY, SECRET_KEY } = window.APP_CONFIG
 const Player = {
   songs: [],
@@ -31,6 +26,11 @@ const Audio = {
   lastVolume: 0.5,
   isSeeking: false,
   seekTimeout: null,
+  config: {
+    fftSize: 512,
+    minDecibels: -90,
+    smoothingTimeConstant: 0.75,
+  },
 
   init() {
     if (!this.context) {
@@ -38,16 +38,16 @@ const Audio = {
       const src = this.context.createMediaElementSource(DOM.audio)
 
       this.analyzer = this.context.createAnalyser()
-      this.analyzer.fftSize = AUDIO_CONFIG.fftSize
-      this.analyzer.minDecibels = AUDIO_CONFIG.minDecibels
-      this.analyzer.smoothingTimeConstant = AUDIO_CONFIG.smoothing
+      this.analyzer.fftSize = this.config.fftSize
+      this.analyzer.minDecibels = this.config.minDecibels
+      this.analyzer.smoothingTimeConstant = this.config.smoothingTimeConstant
 
       this.gainNode = this.context.createGain()
       src.connect(this.gainNode)
       this.gainNode.connect(this.analyzer)
       this.analyzer.connect(this.context.destination)
 
-      Object.assign(this.analyzer, AUDIO_CONFIG)
+      Object.assign(this.analyzer, this.config)
       this.gainNode.gain.value = this.lastVolume
 
       Visualizer.init()
@@ -71,10 +71,77 @@ const Audio = {
 
 const Visualizer = {
   running: false,
+  samplingPaused: true,
+  context: null,
+  canvas: null,
+  canvasOptions: {
+    innerHeight: null,
+    innerWidth: null,
+    capHeight: 2,
+    barWidth: 13,
+    barHeight: null,
+    barSpacing: 25,
+    barCount: null,
+    styles: null,
+    frequencyUpper: null,
+    frequencyLimit: null,
+  },
+  dpr: 1,
+  colors: {
+    cap: '#fff',
+    barTop: '#0f3443',
+    barMiddle: '#1b8d93ff',
+    barBottom: '#54d1daff',
+  },
+  frequencyData: null,
+  decayData: null,
+
+  setupContext() {
+    this.canvas = this.canvas || DOM.canvas
+    this.dpr = window.devicePixelRatio || 1
+    const rect = this.canvas.getBoundingClientRect()
+    this.canvas.width = rect.width * this.dpr
+    this.canvas.height = rect.height * this.dpr
+    const ctx = this.canvas.getContext('2d')
+    ctx.scale(this.dpr, this.dpr)
+
+    this.context = ctx
+  },
+
+  initializeOptions() {
+    const innerHeight = this.canvas.height / this.dpr
+    const innerWidth = this.canvas.width / this.dpr
+    const barHeight = innerHeight - this.canvasOptions.capHeight
+    const barCount = Math.round(innerWidth / this.canvasOptions.barSpacing)
+    const styles = {
+      capStyle: this.colors.cap,
+      gradient: (() => {
+        const g = this.context.createLinearGradient(0, barHeight, 0, 0)
+
+        g.addColorStop(1, this.colors.barTop)
+        g.addColorStop(0.5, this.colors.barMiddle)
+        g.addColorStop(0, this.colors.barBottom)
+        return g
+      })(),
+    }
+
+    const frequencyUpper = (Audio.context?.sampleRate || 44100) / 2
+    const frequencyLimit = Math.min(16e3, frequencyUpper)
+
+    Object.assign(this.canvasOptions, {
+      innerHeight,
+      innerWidth,
+      barHeight,
+      barCount,
+      styles,
+      frequencyUpper,
+      frequencyLimit,
+    })
+  },
 
   init() {
-    setupVisualContext()
-    initializeOptions()
+    this.setupContext()
+    this.initializeOptions()
 
     if (!this.frequencyData) {
       this.frequencyData = new Uint8Array(Audio.analyzer.frequencyBinCount)
@@ -87,6 +154,49 @@ const Visualizer = {
     }
   },
 
+  updateCanvasParameters() {
+    this.setupContext()
+    this.initializeOptions()
+  },
+
+  drawFrame() {
+    if (!this.canvasOptions || !Audio.analyzer) return
+
+    const ctx = this.context
+    const opts = this.canvasOptions
+
+    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
+
+    const decay = this.decayData
+
+    const step =
+      (decay.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
+      (opts.barCount - 1)
+
+    for (let i = 0; i < opts.barCount; i++) {
+      const value = decay[Math.floor(i * step)] / 255
+      const x = opts.barSpacing * (i + 0.5)
+
+      if (x + opts.barWidth < opts.innerWidth) {
+        ctx.fillStyle = opts.styles.gradient
+        ctx.fillRect(
+          x,
+          opts.barHeight * (1 - value) + opts.capHeight,
+          opts.barWidth,
+          opts.barHeight * value,
+        )
+
+        ctx.fillStyle = opts.styles.capStyle
+        ctx.fillRect(
+          x,
+          opts.barHeight * (1 - value),
+          opts.barWidth,
+          opts.capHeight,
+        )
+      }
+    }
+  },
+
   render() {
     if (this.running) {
       const canSample = !DOM.audio.paused && !Audio.isSeeking && !isMuted()
@@ -95,13 +205,23 @@ const Visualizer = {
         Audio.analyzer.getByteFrequencyData(this.frequencyData)
       }
 
+      let isActive = false
+
       for (let i = 0; i < this.decayData.length; i++) {
         const input = canSample ? this.frequencyData[i] : 0
         this.decayData[i] = Math.max(input, this.decayData[i] * 0.92)
+
+        if (!isActive && this.decayData[i] > 1) {
+          isActive = true
+        }
       }
 
-      drawFrame()
-      requestAnimationFrame(this.render.bind(this))
+      if (isActive || canSample) {
+        this.drawFrame()
+        requestAnimationFrame(this.render.bind(this))
+      } else {
+        this.running = false
+      }
     }
   },
 }
@@ -171,9 +291,6 @@ const S3 = {
     }
   },
 }
-
-let visualContext // Variables for audioContext analysis.
-let canvas, canvasOptions, dpr, capHeight // Canvas and bars variables.
 
 const titleReplaces = [
   // List of title transitions.
@@ -258,11 +375,6 @@ function updateMetadata(fullTitle, year) {
       artist: captureGroups[0],
       title: captureGroups[1],
       artwork: [
-        {
-          src: 'https://wallpapersmug.com/download/320x240/a7e9e6/nebula-space-planet-blue-art-4k.jpg',
-          sizes: '320x240',
-          type: 'image/png',
-        },
         {
           src: 'https://i1.wp.com/edgeeffects.net/wp-content/uploads/2021/03/The_Earth_seen_from_Apollo_17.jpg?ssl=1',
           sizes: '512x512',
@@ -396,112 +508,6 @@ function updateDisplayedTime() {
 }
 
 /**
- * Gets pixel ratio of current device for correct drawing on canvas with high sharpness.
- * @param {canvas object} canvas.
- * @return {canvas_context} ctx.
- */
-function setupVisualContext() {
-  canvas = canvas || document.getElementsByClassName('canvas')[0]
-  dpr = window.devicePixelRatio || 1
-  const rect = canvas.getBoundingClientRect()
-  canvas.width = rect.width * dpr
-  canvas.height = rect.height * dpr
-  const ctx = canvas.getContext('2d')
-  ctx.scale(dpr, dpr)
-
-  visualContext = ctx
-}
-
-/**
- * Called if window was resized to tweak the params to get rid of possible blurriness.
- */
-function updateCanvasParameters() {
-  setupVisualContext()
-  initializeOptions()
-}
-
-/**
- * Initialize canvas options.
- */
-function initializeOptions() {
-  const innerHeight = canvas.height / dpr
-  const innerWidth = canvas.width / dpr
-  const capHeight = 2
-  const barWidth = 13
-  const barSpacing = 25
-  const barHeight = innerHeight - capHeight
-  const barCount = Math.round(innerWidth / barSpacing)
-  const styles = {
-    capStyle: '#fff',
-    gradient: (() => {
-      const g = visualContext.createLinearGradient(0, barHeight, 0, 0)
-
-      g.addColorStop(1, '#0f3443')
-      g.addColorStop(0.5, '#1b8d93ff')
-      g.addColorStop(0, '#54d1daff')
-      return g
-    })(),
-  }
-
-  const frequencyUpper = Audio.context.sampleRate / 2
-  const frequencyLimit = Math.min(16e3, frequencyUpper)
-
-  canvasOptions = {
-    innerHeight: innerHeight,
-    innerWidth: innerWidth,
-    capHeight: capHeight,
-    barWidth: barWidth,
-    barHeight: barHeight,
-    barSpacing: barSpacing,
-    barCount: barCount,
-    styles: styles,
-    frequencyUpper: frequencyUpper,
-    frequencyLimit: frequencyLimit,
-  }
-}
-
-/**
- * Draws new frame of spectrum visualization.
- */
-function drawFrame() {
-  if (!canvasOptions || !Audio.analyzer) return
-
-  const ctx = visualContext
-  const opts = canvasOptions
-
-  ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
-
-  const decay = Visualizer.decayData
-
-  const step =
-    (decay.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
-    (opts.barCount - 1)
-
-  for (let i = 0; i < opts.barCount; i++) {
-    const value = decay[Math.floor(i * step)] / 255
-    const x = opts.barSpacing * (i + 0.5)
-
-    if (x + opts.barWidth < opts.innerWidth) {
-      ctx.fillStyle = opts.styles.gradient
-      ctx.fillRect(
-        x,
-        opts.barHeight * (1 - value) + opts.capHeight,
-        opts.barWidth,
-        opts.barHeight * value,
-      )
-
-      ctx.fillStyle = opts.styles.capStyle
-      ctx.fillRect(
-        x,
-        opts.barHeight * (1 - value),
-        opts.barWidth,
-        opts.capHeight,
-      )
-    }
-  }
-}
-
-/**
  * @returns {bool}. Whether bucket public or private
  */
 function isBucketPrivate() {
@@ -593,6 +599,10 @@ function changeVolume() {
     Audio.init()
   }
 
+  if (!isMuted() && !Visualizer.running) {
+    Visualizer.init()
+  }
+
   Audio.gainNode.gain.setTargetAtTime(vol, Audio.context.currentTime, 0.01)
   updateVolumeButtonIcon()
 }
@@ -619,6 +629,9 @@ function toggleMute() {
       0.04,
     )
     DOM.volume.value = Audio.lastVolume
+    if (!Visualizer.running) {
+      Visualizer.init()
+    }
   }
 
   updateVolumeButtonIcon()
@@ -637,19 +650,26 @@ function updatePlayIcon() {
  * Adds all necessary event listeners.
  */
 function addListeners() {
-  window.addEventListener('resize', updateCanvasParameters)
+  let resizeTimeout
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = setTimeout(() => Visualizer.updateCanvasParameters(), 25)
+  })
 
   DOM.audio.addEventListener('ended', nextSongOnEnd)
   DOM.audio.addEventListener('timeupdate', moveSlider)
   DOM.audio.addEventListener('play', () => {
-    Visualizer.paused = false
-    Visualizer.init()
+    Visualizer.samplingPaused = false
+
+    if (!Visualizer.running) {
+      Visualizer.init()
+    }
 
     updatePlayIcon()
   })
 
   DOM.audio.addEventListener('pause', () => {
-    Visualizer.paused = true
+    Visualizer.samplingPaused = true
 
     updatePlayIcon()
   })
@@ -665,7 +685,7 @@ function addListeners() {
       Audio.context.currentTime,
     )
 
-    Visualizer.paused = true
+    Visualizer.samplingPaused = true
   })
 
   DOM.audio.addEventListener('seeked', async () => {
@@ -679,7 +699,7 @@ function addListeners() {
       }
     }
 
-    Visualizer.paused = DOM.audio.paused
+    Visualizer.samplingPaused = DOM.audio.paused
 
     if (Audio.gainNode) {
       Audio.gainNode.gain.setTargetAtTime(
@@ -697,7 +717,7 @@ function addListeners() {
       if (!DOM.audio.duration) return
 
       Audio.isSeeking = true
-      Visualizer.paused = true
+      Visualizer.samplingPaused = true
       DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
     }, 20)
   })
