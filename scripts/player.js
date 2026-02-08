@@ -1,17 +1,26 @@
 /**
  * Gets songs from S3 Object Storage through REST API and puts in the custom WEB-player.
  */
+
+const $ = (selector) => {
+  const el = document.querySelector(selector)
+  if (!el) {
+    throw new Error(`Element not found for selector: ${selector}`)
+  }
+  return el
+}
+
 const DOM = {
-  overlay: document.querySelector('.overlay'),
-  audio: document.querySelector('.audio'),
-  songName: document.querySelector('.song-name'),
-  toggleButton: document.querySelector('.toggle-button'),
-  time: document.querySelector('.current-time'),
-  volumeButton: document.querySelector('.volume-button'),
-  progress: document.querySelector('.progress'),
-  volume: document.querySelector('.volume-regulator'),
-  canvas: document.querySelector('.canvas'),
-  spinner: document.querySelector('.load-spinner'),
+  overlay: $('.overlay'),
+  audio: $('.audio'),
+  songName: $('.song-name'),
+  toggleButton: $('.toggle-button'),
+  time: $('.current-time'),
+  volumeButton: $('.volume-button'),
+  progress: $('.progress'),
+  volume: $('.volume-regulator'),
+  canvas: $('.canvas'),
+  spinner: $('.load-spinner'),
 }
 const { BUCKET, ENDPOINT, SUBPATH, ACCESS_KEY, SECRET_KEY } = window.APP_CONFIG
 const Player = {
@@ -70,8 +79,7 @@ const Audio = {
 }
 
 const Visualizer = {
-  running: false,
-  samplingPaused: true,
+  rafId: null,
   context: null,
   canvas: null,
   canvasOptions: {
@@ -147,11 +155,6 @@ const Visualizer = {
       this.frequencyData = new Uint8Array(Audio.analyzer.frequencyBinCount)
       this.decayData = new Float32Array(Audio.analyzer.frequencyBinCount)
     }
-
-    if (!this.running) {
-      this.running = true
-      this.render()
-    }
   },
 
   updateCanvasParameters() {
@@ -160,68 +163,92 @@ const Visualizer = {
   },
 
   drawFrame() {
-    if (!this.canvasOptions || !Audio.analyzer) return
+    if (this.canvasOptions && Audio.analyzer) {
+      const ctx = this.context
+      const opts = this.canvasOptions
 
-    const ctx = this.context
-    const opts = this.canvasOptions
+      ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
 
-    ctx.clearRect(0, 0, opts.innerWidth, opts.innerHeight)
+      const decay = this.decayData
 
-    const decay = this.decayData
+      const step =
+        (decay.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
+        (opts.barCount - 1)
 
-    const step =
-      (decay.length * (opts.frequencyLimit / opts.frequencyUpper) - 1) /
-      (opts.barCount - 1)
+      for (let i = 0; i < opts.barCount; i++) {
+        const value = decay[Math.floor(i * step)] / 255
+        const x = opts.barSpacing * (i + 0.5)
 
-    for (let i = 0; i < opts.barCount; i++) {
-      const value = decay[Math.floor(i * step)] / 255
-      const x = opts.barSpacing * (i + 0.5)
+        if (x + opts.barWidth < opts.innerWidth) {
+          ctx.fillStyle = opts.styles.gradient
+          ctx.fillRect(
+            x,
+            opts.barHeight * (1 - value) + opts.capHeight,
+            opts.barWidth,
+            opts.barHeight * value,
+          )
 
-      if (x + opts.barWidth < opts.innerWidth) {
-        ctx.fillStyle = opts.styles.gradient
-        ctx.fillRect(
-          x,
-          opts.barHeight * (1 - value) + opts.capHeight,
-          opts.barWidth,
-          opts.barHeight * value,
-        )
-
-        ctx.fillStyle = opts.styles.capStyle
-        ctx.fillRect(
-          x,
-          opts.barHeight * (1 - value),
-          opts.barWidth,
-          opts.capHeight,
-        )
+          ctx.fillStyle = opts.styles.capStyle
+          ctx.fillRect(
+            x,
+            opts.barHeight * (1 - value),
+            opts.barWidth,
+            opts.capHeight,
+          )
+        }
       }
     }
   },
 
+  computeDecay(decayData, frequencyData, canSample) {
+    const nextDecay = new Float32Array(decayData.length)
+    let isActive = false
+
+    for (let i = 0; i < decayData.length; i++) {
+      const input = canSample ? frequencyData[i] : 0
+      const val = Math.max(input, decayData[i] * 0.92)
+      nextDecay[i] = val
+      if (!isActive && val > 0.5) {
+        isActive = true
+      }
+    }
+
+    return { nextDecay, isActive }
+  },
+
   render() {
-    if (this.running) {
-      const canSample = !DOM.audio.paused && !Audio.isSeeking && !isMuted()
+    const canSample = !DOM.audio.paused && !Audio.isSeeking && !isMuted()
 
-      if (canSample) {
-        Audio.analyzer.getByteFrequencyData(this.frequencyData)
-      }
+    if (canSample) {
+      Audio.analyzer.getByteFrequencyData(this.frequencyData)
+    }
 
-      let isActive = false
+    const { nextDecay, isActive } = this.computeDecay(
+      this.decayData,
+      this.frequencyData,
+      canSample,
+    )
 
-      for (let i = 0; i < this.decayData.length; i++) {
-        const input = canSample ? this.frequencyData[i] : 0
-        this.decayData[i] = Math.max(input, this.decayData[i] * 0.92)
+    this.decayData = nextDecay
 
-        if (!isActive && this.decayData[i] > 1) {
-          isActive = true
-        }
-      }
+    if (isActive || canSample) {
+      this.drawFrame()
+      this.rafId = requestAnimationFrame(this.render.bind(this))
+    } else {
+      this.stop()
+    }
+  },
 
-      if (isActive || canSample) {
-        this.drawFrame()
-        requestAnimationFrame(this.render.bind(this))
-      } else {
-        this.running = false
-      }
+  start() {
+    if (!this.rafId) {
+      this.render()
+    }
+  },
+
+  stop() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
     }
   },
 }
@@ -234,18 +261,18 @@ const S3 = {
   },
 
   init() {
-    if (this.client) return
+    if (!this.client) {
+      if (this.isPrivate()) {
+        AWS.config.update({
+          accessKeyId: ACCESS_KEY,
+          secretAccessKey: SECRET_KEY,
+        })
+      }
 
-    if (this.isPrivate()) {
-      AWS.config.update({
-        accessKeyId: ACCESS_KEY,
-        secretAccessKey: SECRET_KEY,
+      this.client = new AWS.S3({
+        endpoint: 'https://' + ENDPOINT,
       })
     }
-
-    this.client = new AWS.S3({
-      endpoint: 'https://' + ENDPOINT,
-    })
   },
 
   listSongs() {
@@ -599,8 +626,8 @@ function changeVolume() {
     Audio.init()
   }
 
-  if (!isMuted() && !Visualizer.running) {
-    Visualizer.init()
+  if (!isMuted()) {
+    Visualizer.start()
   }
 
   Audio.gainNode.gain.setTargetAtTime(vol, Audio.context.currentTime, 0.01)
@@ -629,9 +656,7 @@ function toggleMute() {
       0.04,
     )
     DOM.volume.value = Audio.lastVolume
-    if (!Visualizer.running) {
-      Visualizer.init()
-    }
+    Visualizer.start()
   }
 
   updateVolumeButtonIcon()
@@ -659,33 +684,25 @@ function addListeners() {
   DOM.audio.addEventListener('ended', nextSongOnEnd)
   DOM.audio.addEventListener('timeupdate', moveSlider)
   DOM.audio.addEventListener('play', () => {
-    Visualizer.samplingPaused = false
-
-    if (!Visualizer.running) {
-      Visualizer.init()
-    }
+    Visualizer.start()
 
     updatePlayIcon()
   })
 
   DOM.audio.addEventListener('pause', () => {
-    Visualizer.samplingPaused = true
-
     updatePlayIcon()
   })
 
   DOM.audio.addEventListener('seeking', () => {
     Audio.isSeeking = true
 
-    if (!Audio.gainNode || !Audio.context) return
-
-    Audio.gainNode.gain.cancelScheduledValues(Audio.context.currentTime)
-    Audio.gainNode.gain.setValueAtTime(
-      Audio.lastVolume,
-      Audio.context.currentTime,
-    )
-
-    Visualizer.samplingPaused = true
+    if (Audio.gainNode && !Audio.context) {
+      Audio.gainNode.gain.cancelScheduledValues(Audio.context.currentTime)
+      Audio.gainNode.gain.setValueAtTime(
+        Audio.lastVolume,
+        Audio.context.currentTime,
+      )
+    }
   })
 
   DOM.audio.addEventListener('seeked', async () => {
@@ -698,8 +715,6 @@ function addListeners() {
         console.warn('AudioContext resume failed after seek', err)
       }
     }
-
-    Visualizer.samplingPaused = DOM.audio.paused
 
     if (Audio.gainNode) {
       Audio.gainNode.gain.setTargetAtTime(
@@ -714,11 +729,10 @@ function addListeners() {
     if (Audio.seekTimeout) clearTimeout(Audio.seekTimeout)
 
     Audio.seekTimeout = setTimeout(() => {
-      if (!DOM.audio.duration) return
-
-      Audio.isSeeking = true
-      Visualizer.samplingPaused = true
-      DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
+      if (DOM.audio.duration) {
+        Audio.isSeeking = true
+        DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
+      }
     }, 20)
   })
 
