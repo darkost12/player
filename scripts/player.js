@@ -253,6 +253,17 @@ const Visualizer = {
   },
 }
 
+const unsafeChars = /[\/\\\?\%\#\:\<\>\|\"\\*]/g
+const escapeRegex = /__([0-9A-Fa-f]{2})__/g
+
+function decodeFilename(encoded) {
+  return encoded.replace(escapeRegex, (_, hex) => {
+    const code = parseInt(hex, 16)
+
+    return isNaN(code) ? `__${hex}__` : String.fromCharCode(code)
+  })
+}
+
 const S3 = {
   client: null,
 
@@ -318,12 +329,6 @@ const S3 = {
     }
   },
 }
-
-const titleReplaces = [
-  // List of title transitions.
-  { from: '.mp3', to: '' },
-  { from: 'AC_DC', to: 'AC/DC' },
-]
 
 window.AudioContext = // Automatic detection of webkit.
   window.AudioContext || window.webkitAudioContext || window.mozAudioContext
@@ -419,7 +424,7 @@ function updateMetadata(fullTitle, year) {
  * @return {string} preparedTitle
  */
 function prepareTitle(title) {
-  return titleReplaces.reduce((p, c) => p.replace(c.from, c.to), title)
+  return decodeFilename(title.replace('.mp3', ''))
 }
 
 /**
