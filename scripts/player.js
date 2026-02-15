@@ -78,6 +78,8 @@ const Audio = {
   },
 }
 
+const supportedFormats = ['.mp3', '.ogg', '.wav', '.flac']
+
 const Visualizer = {
   rafId: null,
   context: null,
@@ -303,7 +305,9 @@ const S3 = {
 
         data.Contents.forEach((song) => {
           const key = song.Key.replace(subpathRegexp, '')
-          if (key.endsWith('.mp3')) received.push(key)
+          if (supportedFormats.find((f) => key.toLowerCase().endsWith(f))) {
+            received.push(key)
+          }
         })
 
         resolve(received)
@@ -424,7 +428,7 @@ function updateMetadata(fullTitle, year) {
  * @return {string} preparedTitle
  */
 function prepareTitle(title) {
-  return decodeFilename(title.replace('.mp3', ''))
+  return decodeFilename(title.replace(/\.(mp3|ogg|wav|flac)$/, ''))
 }
 
 /**

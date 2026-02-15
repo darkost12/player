@@ -13,4 +13,8 @@ Check it out here: [Live Demo](https://darkost12.github.io/player/)
 ### Using with Private Buckets
 If you want to play songs from a private S3 bucket, you can provide your secret keys in any way you prefer. Make sure to handle your credentials securely and avoid exposing them in client-side code.
 
+Don't forget to set the appropriate CORS configuration on your S3 bucket to allow access from your browser.
+
+S3 doesn't support some special characters in object keys. Symbols are escaped in the format `__{urlEncodedHex}__`. For example, `/` becomes `__2F__` and `:` becomes `__3A__`.
+
 ---
