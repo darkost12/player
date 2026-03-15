@@ -210,7 +210,7 @@ const Visualizer = {
       const input = canSample ? frequencyData[i] : 0
       const val = Math.max(input, decayData[i] * 0.92)
       nextDecay[i] = val
-      if (!isActive && val > 0.5) {
+      if (!isActive && val > 0.05) {
         isActive = true
       }
     }
@@ -297,27 +297,36 @@ const S3 = {
 
       const params = { Bucket: BUCKET }
 
-      const cb = (err, data) => {
-        if (err) {
-          reject(err)
-          return
+      const fetchBatch = (params) => {
+        const cb = (err, data) => {
+          if (err) {
+            reject(err)
+            return
+          }
+
+          data.Contents.forEach((song) => {
+            const key = song.Key.replace(subpathRegexp, '')
+            if (supportedFormats.find((f) => key.toLowerCase().endsWith(f))) {
+              received.push(key)
+            }
+          })
+
+          if (data.IsTruncated) {
+            params.ContinuationToken = data.NextContinuationToken
+            fetchBatch(params)
+          } else {
+            resolve(received)
+          }
         }
 
-        data.Contents.forEach((song) => {
-          const key = song.Key.replace(subpathRegexp, '')
-          if (supportedFormats.find((f) => key.toLowerCase().endsWith(f))) {
-            received.push(key)
-          }
-        })
-
-        resolve(received)
+        if (this.isPrivate()) {
+          this.client.listObjectsV2(params, cb)
+        } else {
+          this.client.makeUnauthenticatedRequest('listObjectsV2', params, cb)
+        }
       }
 
-      if (this.isPrivate()) {
-        this.client.listObjects(params, cb)
-      } else {
-        this.client.makeUnauthenticatedRequest('listObjects', params, cb)
-      }
+      fetchBatch(params)
     })
   },
 
@@ -614,7 +623,7 @@ function moveSlider() {
  */
 function isMuted() {
   const vol = DOM.volume ? Number(DOM.volume.value) : Audio.lastVolume
-  return vol < 0.001
+  return vol < 0.0001
 }
 
 /**
