@@ -35,6 +35,7 @@ const Audio = {
   lastVolume: 0.5,
   isSeeking: false,
   seekTimeout: null,
+  pendingSeek: null,
   config: {
     fftSize: 512,
     minDecibels: -90,
@@ -609,6 +610,10 @@ function nextSongOnEnd() {
  * Moves slider according to current time.
  */
 function moveSlider() {
+  if (!Audio.isSeeking) {
+    DOM.progress.value = (DOM.audio.currentTime * 100) / DOM.audio.duration
+  }
+
   if (DOM.audio.currentTime === 0) {
     DOM.progress.value = 1
   } else {
@@ -741,17 +746,30 @@ function addListeners() {
         0.03,
       )
     }
+
+    Visualizer.start()
   })
 
   DOM.progress.addEventListener('input', () => {
     if (Audio.seekTimeout) clearTimeout(Audio.seekTimeout)
 
     Audio.seekTimeout = setTimeout(() => {
-      if (DOM.audio.duration) {
-        Audio.isSeeking = true
-        DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
+      if (!DOM.audio.duration || isNaN(DOM.audio.duration)) {
+        Audio.pendingSeek = DOM.progress.value
+        return
       }
+
+      Audio.isSeeking = true
+      DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
     }, 20)
+  })
+
+  DOM.audio.addEventListener('loadedmetadata', () => {
+    if (Audio.pendingSeek !== null) {
+      DOM.audio.currentTime = (DOM.audio.duration / 100) * Audio.pendingSeek
+
+      Audio.pendingSeek = null
+    }
   })
 
   DOM.volumeButton.addEventListener('click', toggleMute)
