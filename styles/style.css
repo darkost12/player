@@ -29,6 +29,7 @@ body {
   width: 100%;
   height: 100%;
   background-image: var(--bg-gradient);
+  font-family: 'Electrolize', sans-serif;
 }
 
 .next-button {
@@ -105,13 +106,8 @@ nav {
 .song-name {
   text-align: center;
   display: none;
-  font-family: 'venus';
+  font-size: 24px;
   color: var(--text-color);
-}
-
-@font-face {
-  font-family: 'venus';
-  src: url('../assets/venus.ttf');
 }
 
 .name-holder {
@@ -149,7 +145,6 @@ nav {
   display: inline-block;
   text-align: right;
   padding-left: 1vw;
-  font-family: 'venus';
   font-size: 15px;
 }
 
