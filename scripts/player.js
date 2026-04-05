@@ -106,6 +106,7 @@ const Visualizer = {
   },
   frequencyData: null,
   decayData: null,
+  stopped: false,
 
   setupContext() {
     this.canvas = this.canvas || DOM.canvas
@@ -409,6 +410,14 @@ function disableLoader() {
   DOM.spinner.style.display = 'none'
 }
 
+function showCanvas() {
+  DOM.canvas.style.display = 'block'
+}
+
+function hideCanvas() {
+  DOM.canvas.style.display = 'none'
+}
+
 /**
  * Updates session data on changing of song.
  * @param {string} title. Song[i].Key (title of song).
@@ -629,6 +638,25 @@ function moveSlider() {
 function isMuted() {
   const vol = DOM.volume ? Number(DOM.volume.value) : Audio.lastVolume
   return vol < 0.0001
+}
+
+/**
+ * Toggles the visualization bars on/off.
+ */
+function toggleBars() {
+  if (Visualizer.context) {
+    const stopped = !Visualizer.stopped
+
+    Visualizer.stopped = stopped
+
+    if (stopped) {
+      Visualizer.stop()
+      hideCanvas()
+    } else {
+      Visualizer.start()
+      showCanvas()
+    }
+  }
 }
 
 /**

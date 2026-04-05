@@ -40,6 +40,12 @@ body {
   margin-right: 4px;
 }
 
+.toggle-bars-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
 .button {
   width: 60px;
   height: 60px;
@@ -145,7 +151,7 @@ nav {
   display: inline-block;
   text-align: right;
   padding-left: 1vw;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .volume-button {
