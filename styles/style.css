@@ -43,8 +43,10 @@ body {
 
 .toggle-bars-button {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 16px;
+  right: 16px;
+  height: 30px;
+  width: 30px;
 }
 
 .button {
@@ -152,7 +154,7 @@ nav {
   display: inline-block;
   text-align: right;
   padding-left: 1vw;
-  font-size: 18px;
+  font-size: 24px;
 }
 
 .volume-button {
