@@ -9,6 +9,7 @@
 
   <script language="javascript" type="text/javascript"
     src="https://sdk.amazonaws.com/js/aws-sdk-2.1430.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   <script src="scripts/config.js"></script>
   <script src="scripts/config.local.js"></script>
   <script defer src="scripts/player.js"></script>
@@ -28,9 +29,19 @@
         <audio class="audio" preload="metadata" crossorigin="anonymous" />
       </div>
     </section>
-    <button type="button" class="button no-select" onclick="toggleBars()">
-      <img src="assets/bars.png" class="no-select toggle-bars-button" />
-    </button>
+    <div class="top-controls">
+      <button type="button" class="button no-select lyrics-button-wrapper" onclick="toggleLyrics()">
+        <img src="assets/text.png" class="button-icon no-select toggle-lyrics-button" />
+      </button>
+      <button type="button" class="button no-select" onclick="toggleBars()">
+        <img src="assets/bars.png" class="button-icon no-select toggle-bars-button" />
+      </button>
+    </div>
+  </div>
+  <div class="lyrics-panel">
+    <div class="lyrics-content">
+      <p class="lyrics-text"></p>
+    </div>
   </div>
   <div class="footing-span">
     <div class="name-holder">

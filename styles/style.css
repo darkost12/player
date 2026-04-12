@@ -42,9 +42,6 @@ body {
 }
 
 .toggle-bars-button {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   height: 30px;
   width: 30px;
 }
@@ -258,4 +255,63 @@ nav {
   display: inline-block;
   width: 100%;
   margin: 10px 0;
+}
+
+.top-controls {
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  top: 16px;
+  right: 16px;
+}
+
+.toggle-lyrics-button {
+  height: 30px;
+  width: 30px;
+}
+
+.lyrics-button-wrapper {
+  display: none;
+}
+
+.lyrics-panel {
+  display: none;
+  position: fixed;
+  top: 74px;
+  left: 7.5%;
+  right: 7.5%;
+  bottom: 170px;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  z-index: 4;
+  justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.lyrics-content {
+  width: 92%;
+  max-width: 800px;
+  max-height: 100%;
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding: 28px 16px;
+  margin: 0 auto;
+}
+
+.lyrics-content::-webkit-scrollbar {
+  display: none;
+}
+
+.lyrics-text {
+  color: var(--text-color);
+  font-family: 'Jura', sans-serif;
+  font-size: 18px;
+  line-height: 1.7;
+  text-align: center;
+  white-space: pre-wrap;
+  margin: 0;
 }

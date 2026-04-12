@@ -21,12 +21,20 @@ const DOM = {
   volume: $('.volume-regulator'),
   canvas: $('.canvas'),
   spinner: $('.load-spinner'),
+  lyricsButton: $('.lyrics-button-wrapper'),
+  lyricsPanel: $('.lyrics-panel'),
+  lyricsText: $('.lyrics-text'),
 }
-const { BUCKET, ENDPOINT, SUBPATH, ACCESS_KEY, SECRET_KEY } = window.APP_CONFIG
+const { BUCKET, ENDPOINT, SUBPATH, METADATA, ACCESS_KEY, SECRET_KEY } =
+  window.APP_CONFIG
 const Player = {
   songs: [],
   index: 0,
   isLoading: true,
+}
+const Lyrics = {
+  current: null,
+  visible: false,
 }
 const Audio = {
   context: null,
@@ -343,6 +351,46 @@ const S3 = {
       return `https://${BUCKET}.${ENDPOINT}${SUBPATH}${title}`
     }
   },
+
+  fetchLyrics(songTitle) {
+    return new Promise((resolve) => {
+      if (!METADATA) {
+        resolve(null)
+        return
+      }
+
+      this.init()
+      const baseName = songTitle.replace(/\.(mp3|ogg|wav|flac)$/, '')
+      const key = METADATA + baseName + '.yml'
+
+      const cb = (err, data) => {
+        if (err) {
+          console.log('Failed to fetch metadata', err)
+          resolve(null)
+          return
+        }
+
+        try {
+          const text = data.Body.toString('utf-8')
+          const parsed = jsyaml.load(text)
+          resolve(parsed?.lyrics ?? null)
+        } catch (e) {
+          console.log('Failed to parse metadata', e)
+          resolve(null)
+        }
+      }
+
+      if (this.isPrivate()) {
+        this.client.getObject({ Bucket: BUCKET, Key: key }, cb)
+      } else {
+        this.client.makeUnauthenticatedRequest(
+          'getObject',
+          { Bucket: BUCKET, Key: key },
+          cb,
+        )
+      }
+    })
+  },
 }
 
 window.AudioContext = // Automatic detection of webkit.
@@ -391,6 +439,7 @@ function showFirst() {
 
     DOM.audio.src = songUrl(Player.songs[0])
     DOM.songName.style.display = 'inline-block'
+    loadSongLyrics()
   }
 }
 
@@ -528,6 +577,7 @@ function changeSong() {
   loadSong(Player.index)
   updateTitle()
   playCurrentSong()
+  loadSongLyrics()
 }
 
 /**
@@ -613,6 +663,7 @@ function nextSongOnEnd() {
 
   DOM.audio.src = songUrl(Player.songs[Player.index])
   DOM.audio.play()
+  loadSongLyrics()
 }
 
 /**
@@ -720,6 +771,53 @@ function updatePlayIcon() {
   DOM.toggleButton.src = DOM.audio.paused
     ? 'assets/play.png'
     : 'assets/pause.png'
+}
+
+/**
+ * Shows or hides the lyrics button based on whether lyrics are available.
+ */
+function updateLyricsButton() {
+  DOM.lyricsButton.style.display = Lyrics.current ? 'block' : 'none'
+}
+
+/**
+ * Shows the lyrics panel with the current song's lyrics.
+ */
+function showLyricsPanel() {
+  DOM.lyricsText.textContent = Lyrics.current || ''
+  DOM.lyricsPanel.style.display = 'flex'
+  Lyrics.visible = true
+}
+
+/**
+ * Hides the lyrics panel.
+ */
+function hideLyricsPanel() {
+  DOM.lyricsPanel.style.display = 'none'
+  Lyrics.visible = false
+}
+
+/**
+ * Toggles the lyrics panel on/off.
+ */
+function toggleLyrics() {
+  if (Lyrics.visible) {
+    hideLyricsPanel()
+  } else if (Lyrics.current) {
+    showLyricsPanel()
+  }
+}
+
+/**
+ * Loads lyrics for the current song from metadata, then updates the button visibility.
+ */
+async function loadSongLyrics() {
+  Lyrics.current = null
+  hideLyricsPanel()
+  updateLyricsButton()
+
+  Lyrics.current = await S3.fetchLyrics(Player.songs[Player.index])
+  updateLyricsButton()
 }
 
 /**

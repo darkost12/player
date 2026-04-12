@@ -1,2 +1,2 @@
-scripts/config.local.js
+*.local.*
 .DS_Store
