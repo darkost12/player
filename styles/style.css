@@ -309,9 +309,17 @@ nav {
 .lyrics-text {
   color: var(--text-color);
   font-family: 'Jura', sans-serif;
-  font-size: 18px;
-  line-height: 1.7;
+  font-size: 32px;
   text-align: center;
   white-space: pre-wrap;
   margin: 0;
+}
+
+.lyric-line {
+  line-height: 1.5;
+  margin-bottom: 40px;
+}
+
+.verse-break {
+  height: 40px;
 }

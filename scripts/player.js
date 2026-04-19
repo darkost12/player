@@ -23,6 +23,7 @@ const DOM = {
   spinner: $('.load-spinner'),
   lyricsButton: $('.lyrics-button-wrapper'),
   lyricsPanel: $('.lyrics-panel'),
+  lyricsContent: $('.lyrics-content'),
   lyricsText: $('.lyrics-text'),
 }
 const { BUCKET, ENDPOINT, SUBPATH, METADATA, ACCESS_KEY, SECRET_KEY } =
@@ -316,6 +317,7 @@ const S3 = {
 
           data.Contents.forEach((song) => {
             const key = song.Key.replace(subpathRegexp, '')
+
             if (supportedFormats.find((f) => key.toLowerCase().endsWith(f))) {
               received.push(key)
             }
@@ -784,9 +786,14 @@ function updateLyricsButton() {
  * Shows the lyrics panel with the current song's lyrics.
  */
 function showLyricsPanel() {
-  DOM.lyricsText.textContent = Lyrics.current || ''
+  renderLyrics(Lyrics.current || '')
+
   DOM.lyricsPanel.style.display = 'flex'
   Lyrics.visible = true
+
+  requestAnimationFrame(() => {
+    DOM.lyricsContent.scrollTop = 0
+  })
 }
 
 /**
@@ -818,6 +825,32 @@ async function loadSongLyrics() {
 
   Lyrics.current = await S3.fetchLyrics(Player.songs[Player.index])
   updateLyricsButton()
+}
+
+/**
+ *
+ * @param {string} text. Song text in single string
+ * Renders lyrics text by splitting it into lines and creating divs for each line.
+ */
+function renderLyrics(text) {
+  DOM.lyricsText.innerHTML = ''
+
+  const lines = (text || '').split('\n')
+  const fragment = document.createDocumentFragment()
+
+  lines.forEach((line) => {
+    const el = document.createElement('div')
+    el.className = 'lyric-line'
+    el.textContent = line
+
+    if (line.trim() === '') {
+      el.classList.add('verse-break')
+    }
+
+    fragment.appendChild(el)
+  })
+
+  DOM.lyricsText.appendChild(fragment)
 }
 
 /**
@@ -895,6 +928,12 @@ function addListeners() {
       DOM.audio.currentTime = (DOM.audio.duration / 100) * Audio.pendingSeek
 
       Audio.pendingSeek = null
+    }
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && Lyrics.visible) {
+      hideLyricsPanel()
     }
   })
 
