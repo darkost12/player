@@ -367,7 +367,9 @@ const S3 = {
 
       const cb = (err, data) => {
         if (err) {
-          console.log('Failed to fetch metadata', err)
+          if (err.code !== 'NoSuchKey') {
+            console.log('Failed to fetch metadata', err)
+          }
           resolve(null)
           return
         }
@@ -475,16 +477,16 @@ function hideCanvas() {
  */
 function updateMetadata(fullTitle, year) {
   if ('mediaSession' in navigator) {
-    let captureGroups = fullTitle.split(/\s-\s/)
+    const captureGroups = fullTitle.split(/\s-\s/)
 
     navigator.mediaSession.metadata = new MediaMetadata({
       artist: captureGroups[0],
       title: captureGroups[1],
       artwork: [
         {
-          src: 'https://i1.wp.com/edgeeffects.net/wp-content/uploads/2021/03/The_Earth_seen_from_Apollo_17.jpg?ssl=1',
-          sizes: '512x512',
-          type: 'image/png',
+          src: `data:image/webp;base64,${window.Assets.artworkBase64}`,
+          sizes: '256x256',
+          type: 'image/webp',
         },
       ],
       album: year, // Put year in album field cause there is no such field sadly
@@ -511,7 +513,7 @@ function updateTitle() {
     .split(/(\d{4})$/)
     .map((v) => (v ? v.trim() : v))
 
-  DOM.songName.innerHTML = fullTitle
+  DOM.songName.textContent = fullTitle
   updateMetadata(fullTitle, possibleYear)
 }
 
@@ -603,12 +605,12 @@ function previousSong() {
  */
 function updateDisplayedTime() {
   if (Math.floor(DOM.audio.currentTime % 60) < 10)
-    DOM.time.innerHTML =
+    DOM.time.textContent =
       Math.floor(DOM.audio.currentTime / 60) +
       ':0' +
       Math.floor(DOM.audio.currentTime % 60)
   else
-    DOM.time.innerHTML =
+    DOM.time.textContent =
       Math.floor(DOM.audio.currentTime / 60) +
       ':' +
       Math.floor(DOM.audio.currentTime % 60)
@@ -833,7 +835,7 @@ async function loadSongLyrics() {
  * Renders lyrics text by splitting it into lines and creating divs for each line.
  */
 function renderLyrics(text) {
-  DOM.lyricsText.innerHTML = ''
+  DOM.lyricsText.textContent = ''
 
   const lines = (text || '').split('\n')
   const fragment = document.createDocumentFragment()
