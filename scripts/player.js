@@ -424,7 +424,8 @@ DOM.audio.volume = 1
  */
 function loadMusic(songs) {
   DOM.audio.currentTime = 0
-  navigator.mediaSession.playbackState = 'paused'
+  if ('mediaSession' in navigator)
+    navigator.mediaSession.playbackState = 'paused'
   Player.songs = songs
   Player.originalSongs = songs
     .slice()
@@ -467,7 +468,8 @@ function showFirst() {
   DOM.progress.value = 0
 
   if (
-    navigator.mediaSession.playbackState === 'paused' &&
+    (!navigator.mediaSession ||
+      navigator.mediaSession.playbackState === 'paused') &&
     DOM.audio.src === ''
   ) {
     updateTitle()
@@ -615,7 +617,8 @@ function playCurrentSong() {
   Audio.init()
   Audio.resume()
   DOM.audio.play().catch(() => {})
-  navigator.mediaSession.playbackState = 'playing'
+  if ('mediaSession' in navigator)
+    navigator.mediaSession.playbackState = 'playing'
 }
 
 /**
@@ -623,14 +626,16 @@ function playCurrentSong() {
  */
 function pauseSong() {
   DOM.audio.pause()
-  navigator.mediaSession.playbackState = 'paused'
+  if ('mediaSession' in navigator)
+    navigator.mediaSession.playbackState = 'paused'
 }
 
 /**
  * Updates song on changing of index.
  */
 function changeSong() {
-  navigator.mediaSession.playbackState = 'paused'
+  if ('mediaSession' in navigator)
+    navigator.mediaSession.playbackState = 'paused'
 
   loadSong(Player.index)
   updateTitle()
@@ -1149,10 +1154,12 @@ function addListeners() {
   DOM.volumeButton.addEventListener('click', toggleMute)
   DOM.volume.addEventListener('input', changeVolume)
 
-  navigator.mediaSession.setActionHandler('previoustrack', previousSong)
-  navigator.mediaSession.setActionHandler('nexttrack', nextSong)
-  navigator.mediaSession.setActionHandler('pause', toggleMusic)
-  navigator.mediaSession.setActionHandler('play', toggleMusic)
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('previoustrack', previousSong)
+    navigator.mediaSession.setActionHandler('nexttrack', nextSong)
+    navigator.mediaSession.setActionHandler('pause', toggleMusic)
+    navigator.mediaSession.setActionHandler('play', toggleMusic)
+  }
 }
 
 /**
