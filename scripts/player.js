@@ -32,8 +32,15 @@ const DOM = {
   queueSearch: $('.queue-search'),
   queueButton: $('.toggle-queue-button'),
 }
-const { BUCKET, ENDPOINT, SUBPATH, METADATA, ACCESS_KEY, SECRET_KEY } =
-  window.APP_CONFIG
+const {
+  FORCE_PATH_STYLE,
+  BUCKET,
+  ENDPOINT,
+  SUBPATH,
+  METADATA,
+  ACCESS_KEY,
+  SECRET_KEY,
+} = window.APP_CONFIG
 const Player = {
   songs: [],
   originalSongs: [],
@@ -311,6 +318,8 @@ const S3 = {
 
       this.client = new AWS.S3({
         endpoint: 'https://' + ENDPOINT,
+        s3ForcePathStyle: FORCE_PATH_STYLE,
+        signatureVersion: 'v4',
       })
     }
   },
@@ -365,8 +374,10 @@ const S3 = {
         Key: SUBPATH + title,
         Expires: 1800,
       })
+    } else if (FORCE_PATH_STYLE) {
+      return `https://${ENDPOINT}/${BUCKET}/${SUBPATH}${encodeURIComponent(title)}`
     } else {
-      return `https://${BUCKET}.${ENDPOINT}${SUBPATH}${title}`
+      return `https://${BUCKET}.${ENDPOINT}/${SUBPATH}${encodeURIComponent(title)}`
     }
   },
 

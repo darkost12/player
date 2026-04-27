@@ -1,5 +1,6 @@
 ;(() => {
   window.APP_CONFIG = {
+    FORCE_PATH_STYLE: true,
     BUCKET: 'darkost-public', // Bucket name,
     ENDPOINT: 'storage.yandexcloud.net/', // Don't include protocol
     SUBPATH: 'music/', // Path inside your S3
