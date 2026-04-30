@@ -61,7 +61,7 @@ const Audio = {
   gainNode: null,
   lastVolume: 0.5,
   isSeeking: false,
-  seekTimeout: null,
+  wasPlayingBeforeSeek: false,
   pendingSeek: null,
   config: {
     fftSize: 512,
@@ -435,8 +435,10 @@ DOM.audio.volume = 1
  */
 function loadMusic(songs) {
   DOM.audio.currentTime = 0
-  if ('mediaSession' in navigator)
+  if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'paused'
+  }
+
   Player.songs = songs
   Player.originalSongs = songs
     .slice()
@@ -628,8 +630,9 @@ function playCurrentSong() {
   Audio.init()
   Audio.resume()
   DOM.audio.play().catch(() => {})
-  if ('mediaSession' in navigator)
+  if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'playing'
+  }
 }
 
 /**
@@ -637,16 +640,19 @@ function playCurrentSong() {
  */
 function pauseSong() {
   DOM.audio.pause()
-  if ('mediaSession' in navigator)
+
+  if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'paused'
+  }
 }
 
 /**
  * Updates song on changing of index.
  */
 function changeSong() {
-  if ('mediaSession' in navigator)
+  if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'paused'
+  }
 
   loadSong(Player.index)
   updateTitle()
@@ -748,16 +754,14 @@ function nextSongOnEnd() {
  */
 function moveSlider() {
   if (!Audio.isSeeking) {
-    DOM.progress.value = (DOM.audio.currentTime * 100) / DOM.audio.duration
-  }
+    if (DOM.audio.currentTime === 0) {
+      DOM.progress.value = 1
+    } else {
+      DOM.progress.value = (DOM.audio.currentTime * 100) / DOM.audio.duration
+    }
 
-  if (DOM.audio.currentTime === 0) {
-    DOM.progress.value = 1
-  } else {
-    DOM.progress.value = (DOM.audio.currentTime * 100) / DOM.audio.duration
+    updateDisplayedTime()
   }
-
-  updateDisplayedTime()
 }
 
 /**
@@ -1089,52 +1093,45 @@ function addListeners() {
     updatePlayIcon()
   })
 
-  DOM.audio.addEventListener('seeking', () => {
-    Audio.isSeeking = true
-
-    if (Audio.gainNode && !Audio.context) {
-      Audio.gainNode.gain.cancelScheduledValues(Audio.context.currentTime)
-      Audio.gainNode.gain.setValueAtTime(
-        Audio.lastVolume,
-        Audio.context.currentTime,
-      )
-    }
-  })
-
   DOM.audio.addEventListener('seeked', async () => {
-    Audio.isSeeking = false
-
-    if (Audio.context && Audio.context.state !== 'running') {
+    // Safari can auto-suspend the AudioContext during a seek; resume it if needed.
+    if (Audio.context?.state === 'suspended') {
       try {
-        await Audio.context.resume() // Safari may auto-suspend, so resume
+        await Audio.context.resume()
       } catch (err) {
         console.warn('AudioContext resume failed after seek', err)
       }
     }
 
-    if (Audio.gainNode) {
-      Audio.gainNode.gain.setTargetAtTime(
-        Number(DOM.volume.value),
-        Audio.context.currentTime,
-        0.03,
-      )
-    }
-
     Visualizer.start()
   })
 
+  DOM.progress.addEventListener('pointerdown', () => {
+    Audio.isSeeking = true
+    Audio.wasPlayingBeforeSeek = !DOM.audio.paused
+
+    if (Audio.wasPlayingBeforeSeek) {
+      DOM.audio.pause()
+    }
+  })
+
+  DOM.progress.addEventListener('pointerup', () => {
+    Audio.isSeeking = false
+
+    if (Audio.wasPlayingBeforeSeek) {
+      Audio.wasPlayingBeforeSeek = false
+      playCurrentSong()
+    }
+  })
+
   DOM.progress.addEventListener('input', () => {
-    if (Audio.seekTimeout) clearTimeout(Audio.seekTimeout)
+    if (!DOM.audio.duration || isNaN(DOM.audio.duration)) {
+      Audio.pendingSeek = DOM.progress.value
+      return
+    }
 
-    Audio.seekTimeout = setTimeout(() => {
-      if (!DOM.audio.duration || isNaN(DOM.audio.duration)) {
-        Audio.pendingSeek = DOM.progress.value
-        return
-      }
-
-      Audio.isSeeking = true
-      DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
-    }, 20)
+    DOM.audio.currentTime = (DOM.audio.duration / 100) * DOM.progress.value
+    updateDisplayedTime()
   })
 
   DOM.audio.addEventListener('loadedmetadata', () => {

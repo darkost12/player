@@ -361,7 +361,7 @@ nav {
   position: fixed;
   top: 74px;
   right: 12px;
-  width: 280px;
+  width: 350px;
   max-height: 300px;
   background: rgba(0, 0, 0, 0.72);
   border-radius: 14px;
@@ -574,7 +574,7 @@ nav {
   }
 
   .queue-panel {
-    width: min(340px, calc(100vw - 24px));
+    width: min(350px, calc(100vw - 24px));
     max-height: 380px;
   }
 
