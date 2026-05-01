@@ -54,6 +54,8 @@ const Queue = {
 const Lyrics = {
   current: null,
   visible: false,
+  cache: {},
+  metadataFiles: null,
 }
 const Audio = {
   context: null,
@@ -107,6 +109,10 @@ const Audio = {
 }
 
 const supportedFormats = ['.mp3', '.ogg', '.wav', '.flac']
+const supportedFormatsRegexp = new RegExp(
+  `\\.(${supportedFormats.map((f) => f.slice(1)).join('|')})$`,
+  'i',
+)
 
 const Visualizer = {
   rafId: null,
@@ -343,7 +349,7 @@ const S3 = {
           data.Contents.forEach((song) => {
             const key = song.Key.replace(subpathRegexp, '')
 
-            if (supportedFormats.find((f) => key.toLowerCase().endsWith(f))) {
+            if (supportedFormatsRegexp.test(key)) {
               received.push(key)
             }
           })
@@ -389,7 +395,7 @@ const S3 = {
       }
 
       this.init()
-      const baseName = songTitle.replace(/\.(mp3|ogg|wav|flac)$/, '')
+      const baseName = songTitle.replace(supportedFormatsRegexp, '')
       const key = METADATA + baseName + '.yml'
 
       const cb = (err, data) => {
@@ -420,6 +426,55 @@ const S3 = {
           cb,
         )
       }
+    })
+  },
+
+  /**
+   * Lists all .yml files in the metadata directory and returns a Set of basenames
+   * (filename without the .yml extension). Returns null if METADATA is not configured.
+   */
+  listMetadataFiles() {
+    return new Promise((resolve) => {
+      if (!METADATA) {
+        resolve(null)
+        return
+      }
+
+      this.init()
+      const basenames = new Set()
+      const params = { Bucket: BUCKET, Prefix: METADATA }
+
+      const fetchBatch = (params) => {
+        const cb = (err, data) => {
+          if (err) {
+            console.log('Failed to list metadata files', err)
+            resolve(null)
+            return
+          }
+
+          ;(data.Contents || []).forEach((obj) => {
+            const filename = obj.Key.slice(METADATA.length)
+            if (filename.endsWith('.yml')) {
+              basenames.add(filename.slice(0, -4))
+            }
+          })
+
+          if (data.IsTruncated) {
+            params.ContinuationToken = data.NextContinuationToken
+            fetchBatch(params)
+          } else {
+            resolve(basenames)
+          }
+        }
+
+        if (this.isPrivate()) {
+          this.client.listObjectsV2(params, cb)
+        } else {
+          this.client.makeUnauthenticatedRequest('listObjectsV2', params, cb)
+        }
+      }
+
+      fetchBatch(params)
     })
   },
 }
@@ -547,7 +602,7 @@ function updateMetadata(fullTitle, year) {
  * @return {string} preparedTitle
  */
 function prepareTitle(title) {
-  return decodeFilename(title.replace(/\.(mp3|ogg|wav|flac)$/, ''))
+  return decodeFilename(title.replace(supportedFormatsRegexp, ''))
 }
 
 /**
@@ -709,13 +764,21 @@ function songUrl(title) {
   return S3.getSongUrl(title)
 }
 
+function saveMetadata(metadata) {
+  Lyrics.metadataFiles = metadata
+}
+
 /**
  * Requests songs' data from bucket.
  */
 async function requestSongs() {
   try {
-    const songs = await S3.listSongs()
+    const [songs, metadataFiles] = await Promise.all([
+      S3.listSongs(),
+      S3.listMetadataFiles(),
+    ])
 
+    saveMetadata(metadataFiles)
     loadMusic(songs)
   } catch (err) {
     console.error('Error fetching songs from S3:', err)
@@ -904,13 +967,30 @@ function toggleLyrics() {
 
 /**
  * Loads lyrics for the current song from metadata, then updates the button visibility.
+ * Uses an in-memory cache so switching back and forth never re-fetches.
+ * Skips the network request entirely when we know the metadata file doesn't exist.
  */
 async function loadSongLyrics() {
   Lyrics.current = null
   hideLyricsPanel()
   updateLyricsButton()
 
-  Lyrics.current = await S3.fetchLyrics(Player.songs[Player.index])
+  const songTitle = Player.songs[Player.index]
+
+  const baseName = songTitle.replace(supportedFormatsRegexp, '')
+  const hasNoFile =
+    Lyrics.metadataFiles !== null && !Lyrics.metadataFiles.has(baseName)
+
+  if (Object.prototype.hasOwnProperty.call(Lyrics.cache, songTitle)) {
+    Lyrics.current = Lyrics.cache[songTitle]
+  } else if (hasNoFile) {
+    Lyrics.cache[songTitle] = null
+  } else {
+    const lyrics = await S3.fetchLyrics(songTitle)
+    Lyrics.cache[songTitle] = lyrics
+    Lyrics.current = lyrics
+  }
+
   updateLyricsButton()
 }
 
